@@ -3,6 +3,7 @@ package com.example.anime.controller;
 import com.example.anime.model.Anime;
 import com.example.anime.service.AnimeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,21 @@ public class AnimeController {
     @GetMapping("/list")
     public List<Anime> getAnimes() {
         return animeService.getAllAnimes();
+    }
+
+    // 分页获取动漫
+    @GetMapping("/list/page")
+    public Map<String, Object> getAnimesPaginated(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        Map<String, Object> response = new HashMap<>();
+        Page<Anime> animePage = animeService.getAllAnimesPaginated(page, size);
+        response.put("content", animePage.getContent());
+        response.put("totalElements", animePage.getTotalElements());
+        response.put("totalPages", animePage.getTotalPages());
+        response.put("currentPage", page);
+        response.put("hasMore", animePage.hasNext());
+        return response;
     }
 
     // 根据ID获取动漫

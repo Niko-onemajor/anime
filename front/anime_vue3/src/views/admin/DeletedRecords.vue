@@ -94,7 +94,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 // 处理图片URL
@@ -151,13 +151,13 @@ const loadDeletedRecords = async () => {
     let res;
     switch (activeTab.value) {
       case 'users':
-        res = await axios.post('http://localhost:8080/api/admin/users/deleted');
+        res = await api.post('http://localhost:8080/api/admin/users/deleted');
         break;
       case 'animes':
-        res = await axios.post('http://localhost:8080/api/admin/animes/deleted');
+        res = await api.post('http://localhost:8080/api/admin/animes/deleted');
         break;
       case 'episodes':
-        res = await axios.post('http://localhost:8080/api/admin/episodes/deleted');
+        res = await api.post('http://localhost:8080/api/admin/episodes/deleted');
         break;
       default:
         return;
@@ -212,13 +212,13 @@ const restoreRecord = async (id: number) => {
     let res;
     switch (activeTab.value) {
       case 'users':
-        res = await axios.post('http://localhost:8080/api/admin/users/restore', { id });
+        res = await api.post('http://localhost:8080/api/admin/users/restore', { id });
         break;
       case 'animes':
-        res = await axios.post('http://localhost:8080/api/admin/animes/restore', { id });
+        res = await api.post('http://localhost:8080/api/admin/animes/restore', { id });
         break;
       case 'episodes':
-        res = await axios.post('http://localhost:8080/api/admin/episodes/restore', { id });
+        res = await api.post('http://localhost:8080/api/admin/episodes/restore', { id });
         break;
       default:
         return;
@@ -250,13 +250,13 @@ const hardDeleteRecord = async (id: number) => {
     let res;
     switch (activeTab.value) {
       case 'users':
-        res = await axios.post('http://localhost:8080/api/admin/users/hardDelete', { id });
+        res = await api.post('http://localhost:8080/api/admin/users/hardDelete', { id });
         break;
       case 'animes':
-        res = await axios.post('http://localhost:8080/api/admin/animes/hardDelete', { id });
+        res = await api.post('http://localhost:8080/api/admin/animes/hardDelete', { id });
         break;
       case 'episodes':
-        res = await axios.post('http://localhost:8080/api/admin/episodes/hardDelete', { id });
+        res = await api.post('http://localhost:8080/api/admin/episodes/hardDelete', { id });
         break;
       default:
         return;

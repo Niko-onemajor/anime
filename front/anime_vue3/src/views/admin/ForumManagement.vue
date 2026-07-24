@@ -163,7 +163,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, inject, defineComponent, h } from 'vue';
-import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessageBox, ElMessage } from 'element-plus';
 
 // 处理图片URL
@@ -245,7 +245,7 @@ const commentForm = ref({
 // 加载帖子列表
 const loadPosts = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts');
+    const res = await api.post('http://localhost:8080/api/admin/forum/posts');
     if (res.data.code === 200) {
           posts.value = res.data.data.map((post: any) => ({
             ...post,
@@ -261,7 +261,7 @@ const loadPosts = async () => {
 // 搜索帖子
 const searchPosts = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts/search', {
+    const res = await api.post('http://localhost:8080/api/admin/forum/posts/search', {
       keyword: searchKeyword.value
     });
     if (res.data.code === 200) {
@@ -285,7 +285,7 @@ const toggleSortDirection = () => {
 // 排序帖子
 const sortPosts = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts/sort', {
+    const res = await api.post('http://localhost:8080/api/admin/forum/posts/sort', {
       sortBy: sortBy.value,
       direction: sortDirection.value
     });
@@ -310,7 +310,7 @@ const editPost = (post: any) => {
 // 更新帖子
 const updatePost = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts/update', postForm.value);
+    const res = await api.post('http://localhost:8080/api/admin/forum/posts/update', postForm.value);
     if (res.data.code === 200) {
       ElMessage.success('帖子更新成功！');
       closePostDialog();
@@ -346,7 +346,7 @@ const showDeleteConfirm = async (postId: number) => {
 // 确认删除
 const confirmDelete = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts/delete', {
+    const res = await api.post('http://localhost:8080/api/admin/forum/posts/delete', {
       id: postToDelete.value
     });
     if (res.data.code === 200) {
@@ -376,7 +376,7 @@ const toggleComments = async (postId: number) => {
 // 加载评论
 const loadComments = async (postId: number) => {
   try {
-    const res = await axios.post('http://localhost:8080/api/comment/getComments', {
+    const res = await api.post('http://localhost:8080/api/comment/getComments', {
       postId
     });
     if (res.data.code === 200) {
@@ -460,7 +460,7 @@ const editComment = (postId: number, comment: any) => {
 // 更新评论
 const updateComment = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/comments/update', commentForm.value);
+    const res = await api.post('http://localhost:8080/api/admin/forum/comments/update', commentForm.value);
     if (res.data.code === 200) {
       ElMessage.success('评论更新成功！');
       closeCommentDialog();
@@ -497,7 +497,7 @@ const showCommentDeleteConfirm = async (postId: number, commentId: number) => {
 // 确认删除评论
 const confirmCommentDelete = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/comments/delete', {
+    const res = await api.post('http://localhost:8080/api/admin/forum/comments/delete', {
       id: commentToDelete.value.commentId
     });
     if (res.data.code === 200) {

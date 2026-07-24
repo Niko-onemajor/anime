@@ -217,7 +217,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 // 处理图片URL
@@ -291,7 +291,7 @@ const avatarFile = ref<File | null>(null);
 const loadUsers = async () => {
   try {
     console.log('开始加载用户列表，页码:', currentPage.value, '每页大小:', pageSize.value);
-    const res = await axios.post('http://localhost:8080/api/admin/users', {
+    const res = await api.post('http://localhost:8080/api/admin/users', {
       page: currentPage.value,
       size: pageSize.value
     });
@@ -328,7 +328,7 @@ const loadUsers = async () => {
 const searchUsers = async () => {
   try {
     console.log('开始搜索用户，关键词:', searchKeyword.value, '页码:', currentPage.value, '每页大小:', pageSize.value);
-    const res = await axios.post('http://localhost:8080/api/admin/users/search', {
+    const res = await api.post('http://localhost:8080/api/admin/users/search', {
       keyword: searchKeyword.value,
       page: currentPage.value,
       size: pageSize.value
@@ -372,7 +372,7 @@ const addUser = async () => {
       formData.append('file', avatarFile.value);
       formData.append('username', userForm.value.username);
       
-      const avatarRes = await axios.post('http://localhost:8080/api/user/avatar', formData, {
+      const avatarRes = await api.post('http://localhost:8080/api/user/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -399,7 +399,7 @@ const addUser = async () => {
     
     console.log('发送的用户数据:', userData);
     
-    const res = await axios.post('http://localhost:8080/api/admin/users/add', userData);
+    const res = await api.post('http://localhost:8080/api/admin/users/add', userData);
     if (res.data.code === 200) {
       ElMessage.success('用户添加成功！');
       closeDialog();
@@ -478,7 +478,7 @@ const updateUser = async () => {
       formData.append('file', avatarFile.value);
       formData.append('username', userForm.value.username);
       
-      const avatarRes = await axios.post('http://localhost:8080/api/user/avatar', formData, {
+      const avatarRes = await api.post('http://localhost:8080/api/user/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -507,7 +507,7 @@ const updateUser = async () => {
     
     console.log('发送的用户数据:', userData);
     
-    const res = await axios.post('http://localhost:8080/api/admin/users/update', userData);
+    const res = await api.post('http://localhost:8080/api/admin/users/update', userData);
     if (res.data.code === 200) {
       ElMessage.success('用户更新成功！');
       closeDialog();
@@ -539,7 +539,7 @@ const showDeleteConfirm = (userId: number) => {
 const confirmDelete = async () => {
   try {
     console.log('删除用户ID:', userToDelete.value);
-    const res = await axios.post('http://localhost:8080/api/admin/users/delete', {
+    const res = await api.post('http://localhost:8080/api/admin/users/delete', {
       id: userToDelete.value
     });
     console.log('删除用户响应:', res.data);
@@ -588,7 +588,7 @@ const resetPassword = async () => {
       }
     );
     
-    const res = await axios.post('http://localhost:8080/api/admin/users/reset-password', {
+    const res = await api.post('http://localhost:8080/api/admin/users/reset-password', {
       id: userForm.value.id
     });
     if (res.data.code === 200) {

@@ -1,6 +1,8 @@
 package com.example.anime.repository;
 
 import com.example.anime.model.Anime;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,6 +33,9 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> {
     
     // 根据状态查询
     List<Anime> findByStatusAndDeletedFalse(int status);
+    
+    // 根据状态分页查询（上架且未删除）
+    Page<Anime> findByStatusAndDeletedFalse(int status, Pageable pageable);
     
     // 查询所有未删除的动漫
     List<Anime> findByDeletedFalse();

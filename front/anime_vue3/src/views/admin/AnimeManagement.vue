@@ -205,7 +205,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessageBox, ElMessage, ElDialog } from 'element-plus';
 
 // 处理图片URL
@@ -324,7 +324,7 @@ const animeForm = ref({
 // 加载动漫列表
 const loadAnimes = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/animes');
+    const res = await api.post('http://localhost:8080/api/admin/animes');
     if (res.data.code === 200) {
       animes.value = res.data.data;
     }
@@ -336,7 +336,7 @@ const loadAnimes = async () => {
 // 搜索动漫
 const searchAnimes = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/animes/search', {
+    const res = await api.post('http://localhost:8080/api/admin/animes/search', {
       keyword: searchKeyword.value
     });
     if (res.data.code === 200) {
@@ -356,7 +356,7 @@ const handleImageUpload = async (event: Event) => {
     formData.append('file', file);
     
     try {
-      const res = await axios.post('http://localhost:8080/api/upload/cover', formData, {
+      const res = await api.post('http://localhost:8080/api/upload/cover', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -388,7 +388,7 @@ const handleVideoUpload = async (event: Event, index: number) => {
     
     try {
       console.log('开始上传视频:', file.name);
-      const res = await axios.post('http://localhost:8080/api/admin/upload/video', formData, {
+      const res = await api.post('http://localhost:8080/api/admin/upload/video', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -447,7 +447,7 @@ const removeEpisode = async (index: number) => {
 // 添加动漫
 const addAnime = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/animes/add', animeForm.value);
+    const res = await api.post('http://localhost:8080/api/admin/animes/add', animeForm.value);
     if (res.data.code === 200) {
       ElMessage.success('动漫添加成功！');
       closeDialog();
@@ -462,7 +462,7 @@ const addAnime = async () => {
 const editAnime = async (anime: any) => {
   try {
     // 获取动漫的集数数据
-    const episodesRes = await axios.get(`http://localhost:8080/api/episode/anime/${anime.id}`);
+    const episodesRes = await api.get(`http://localhost:8080/api/episode/anime/${anime.id}`);
     let episodes = [];
     if (episodesRes.data && episodesRes.data.code === 200) {
       episodes = episodesRes.data.data;
@@ -490,7 +490,7 @@ const editAnime = async (anime: any) => {
 const updateAnime = async () => {
   try {
     console.log('更新动漫数据:', animeForm.value);
-    const res = await axios.post('http://localhost:8080/api/admin/animes/update', animeForm.value);
+    const res = await api.post('http://localhost:8080/api/admin/animes/update', animeForm.value);
     console.log('更新动漫响应:', res.data);
     if (res.data.code === 200) {
       ElMessage.success('动漫更新成功！');
@@ -519,7 +519,7 @@ const showDeleteConfirm = async (animeId: number) => {
     );
     
     // 用户确认后执行删除操作
-    const res = await axios.post('http://localhost:8080/api/admin/animes/delete', {
+    const res = await api.post('http://localhost:8080/api/admin/animes/delete', {
       id: animeId
     });
     if (res.data.code === 200) {
@@ -552,7 +552,7 @@ const toggleStatus = async (anime: any) => {
     );
     
     // 用户确认后执行切换操作
-    const res = await axios.post('http://localhost:8080/api/admin/animes/toggleStatus', {
+    const res = await api.post('http://localhost:8080/api/admin/animes/toggleStatus', {
       id: anime.id,
       status: anime.status === 1 ? 0 : 1
     });
@@ -630,7 +630,7 @@ const manageComments = async (anime: any) => {
 // 加载评论
 const loadComments = async (animeId: number) => {
   try {
-    const res = await axios.post('http://localhost:8080/api/anime/comment/list', {
+    const res = await api.post('http://localhost:8080/api/anime/comment/list', {
       animeId: animeId
     });
     if (res.data.code === 200) {
@@ -640,7 +640,7 @@ const loadComments = async (animeId: number) => {
       // 为每个父评论加载回复
       for (const parent of parentComments) {
         try {
-          const repliesRes = await axios.post('http://localhost:8080/api/anime/comment/replies', {
+          const repliesRes = await api.post('http://localhost:8080/api/anime/comment/replies', {
             animeId: animeId,
             parentId: parent.id
           });
@@ -676,7 +676,7 @@ const deleteComment = async (commentId: number) => {
     );
     
     // 用户确认后执行删除操作
-    const res = await axios.post('http://localhost:8080/api/anime/comment/delete', {
+    const res = await api.post('http://localhost:8080/api/anime/comment/delete', {
       commentId: commentId
     });
     if (res.data.code === 200) {

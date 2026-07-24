@@ -6,6 +6,9 @@ import com.example.anime.model.WatchHistory;
 import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.WatchHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -37,6 +40,12 @@ public class AnimeService {
     // 获取所有动漫（只返回上架状态且非删除）
     public List<Anime> getAllAnimes() {
         return animeRepository.findByStatusAndDeletedFalse(1);
+    }
+
+    // 分页获取动漫（上架且非删除）
+    public Page<Anime> getAllAnimesPaginated(int page, int size) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+        return animeRepository.findByStatusAndDeletedFalse(1, pageable);
     }
 
     // 根据ID获取动漫（非删除）

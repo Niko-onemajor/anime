@@ -1,0 +1,56 @@
+package com.example.anime.model;
+
+import javax.persistence.*;
+import java.util.Date;
+
+@Entity
+@Table(name = "forum_post_interactions")
+public class ForumPostInteraction {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long postId;
+    private Long userId;
+    private Integer interactionType; // 1: 点赞, 2: 点踩
+    private Date createTime;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getPostId() {
+        return postId;
+    }
+
+    public void setPostId(Long postId) {
+        this.postId = postId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Integer getInteractionType() {
+        return interactionType;
+    }
+
+    public void setInteractionType(Integer interactionType) {
+        this.interactionType = interactionType;
+    }
+
+    public Date getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
+    }
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testRegister()">Test Register</button>
+    <div id="result"></div>
+
+    <script>
+        function testLogin() {
+            document.getElementById('result').innerHTML = 'Testing login...';
+            axios.post('http://localhost:8080/api/user/login', {
+                username: 'test',
+                password: 'test'
+            })
+            .then(function (response) {
+                document.getElementById('result').innerHTML = JSON.stringify(response.data, null, 2);
+            })
+            .catch(function (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            });
+        }
+
+        function testRegister() {
+            document.getElementById('result').innerHTML = 'Testing register...';
+            axios.post('http://localhost:8080/api/user/register', {
+                username: 'test' + Date.now(),
+                password: 'test123'
+            })
+            .then(function (response) {
+                document.getElementById('result').innerHTML = JSON.stringify(response.data, null, 2);
+            })
+            .catch(function (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>

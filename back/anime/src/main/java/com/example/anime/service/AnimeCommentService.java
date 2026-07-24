@@ -1,0 +1,276 @@
+package com.example.anime.service;
+
+import com.example.anime.model.AnimeComment;
+import com.example.anime.model.CommentInteraction;
+import com.example.anime.repository.AnimeCommentRepository;
+import com.example.anime.repository.CommentInteractionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class AnimeCommentService {
+    @Autowired
+    private AnimeCommentRepository animeCommentRepository;
+    
+    @Autowired
+    private CommentInteractionRepository commentInteractionRepository;
+
+    // 保存评论
+    public AnimeComment saveComment(Long animeId, Long authorId, String content, Long parentId) {
+        AnimeComment comment = new AnimeComment();
+        comment.setAnimeId(animeId);
+        comment.setAuthorId(authorId);
+        comment.setContent(content);
+        comment.setCreateTime(new Date());
+        comment.setParentId(parentId);
+        comment.setLikeCount(0);
+        comment.setDislikeCount(0);
+
+        return animeCommentRepository.save(comment);
+    }
+
+    // 获取动漫的所有顶级评论（不包含回复）
+    public List<AnimeComment> getAnimeComments(Long animeId) {
+        List<AnimeComment> allComments = animeCommentRepository.findByAnimeIdOrderByCreateTimeDesc(animeId);
+        // 过滤出顶级评论（parentId为null）
+        return allComments.stream()
+                .filter(comment -> comment.getParentId() == null)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // 获取评论的子评论
+    public List<AnimeComment> getCommentReplies(Long animeId, Long parentId) {
+        return animeCommentRepository.findByAnimeIdAndParentIdOrderByCreateTimeAsc(animeId, parentId);
+    }
+
+    // 点赞评论
+    public AnimeComment likeComment(Long commentId, Long userId) {
+        // 检查用户是否已经对该评论进行过互动
+        Optional<CommentInteraction> existingInteraction = commentInteractionRepository.findByUserIdAndCommentId(userId, commentId);
+        if (existingInteraction.isPresent()) {
+            // 如果已经是点赞，则取消点赞
+            if (existingInteraction.get().getInteractionType() == 1) {
+                commentInteractionRepository.delete(existingInteraction.get());
+            } else {
+                // 如果是点踩，则先删除点踩，再添加点赞
+                commentInteractionRepository.delete(existingInteraction.get());
+                CommentInteraction interaction = new CommentInteraction();
+                interaction.setCommentId(commentId);
+                interaction.setUserId(userId);
+                interaction.setInteractionType(1); // 1: 点赞
+                interaction.setCreateTime(new Date());
+                commentInteractionRepository.save(interaction);
+            }
+        } else {
+            // 没有互动过，添加点赞
+            CommentInteraction interaction = new CommentInteraction();
+            interaction.setCommentId(commentId);
+            interaction.setUserId(userId);
+            interaction.setInteractionType(1); // 1: 点赞
+            interaction.setCreateTime(new Date());
+            commentInteractionRepository.save(interaction);
+        }
+        
+        Optional<AnimeComment> commentOptional = animeCommentRepository.findById(commentId);
+        if (commentOptional.isPresent()) {
+            // 重新计算点赞数和点踩数
+            AnimeComment comment = commentOptional.get();
+            comment.setLikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 1));
+            comment.setDislikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 2));
+            return animeCommentRepository.save(comment);
+        }
+        return null;
+    }
+
+    // 点踩评论
+    public AnimeComment dislikeComment(Long commentId, Long userId) {
+        // 检查用户是否已经对该评论进行过互动
+        Optional<CommentInteraction> existingInteraction = commentInteractionRepository.findByUserIdAndCommentId(userId, commentId);
+        if (existingInteraction.isPresent()) {
+            // 如果已经是点踩，则取消点踩
+            if (existingInteraction.get().getInteractionType() == 2) {
+                commentInteractionRepository.delete(existingInteraction.get());
+            } else {
+                // 如果是点赞，则先删除点赞，再添加点踩
+                commentInteractionRepository.delete(existingInteraction.get());
+                CommentInteraction interaction = new CommentInteraction();
+                interaction.setCommentId(commentId);
+                interaction.setUserId(userId);
+                interaction.setInteractionType(2); // 2: 点踩
+                interaction.setCreateTime(new Date());
+                commentInteractionRepository.save(interaction);
+            }
+        } else {
+            // 没有互动过，添加点踩
+            CommentInteraction interaction = new CommentInteraction();
+            interaction.setCommentId(commentId);
+            interaction.setUserId(userId);
+            interaction.setInteractionType(2); // 2: 点踩
+            interaction.setCreateTime(new Date());
+            commentInteractionRepository.save(interaction);
+        }
+        
+        Optional<AnimeComment> commentOptional = animeCommentRepository.findById(commentId);
+        if (commentOptional.isPresent()) {
+            // 重新计算点赞数和点踩数
+            AnimeComment comment = commentOptional.get();
+            comment.setLikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 1));
+            comment.setDislikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 2));
+            return animeCommentRepository.save(comment);
+        }
+        return null;
+    }
+
+    // 根据ID删除评论（用于管理员）
+    public void deleteById(Long commentId) {
+        deleteComment(commentId);
+    }
+
+    // 删除评论（物理删除，包括回复）
+    @javax.transaction.Transactional
+    public void deleteComment(Long commentId) {
+        Optional<AnimeComment> commentOptional = animeCommentRepository.findById(commentId);
+        if (commentOptional.isPresent()) {
+            AnimeComment comment = commentOptional.get();
+            
+            // 递归物理删除所有回复
+            deleteReplies(comment.getAnimeId(), commentId);
+            
+            // 先删除主评论的互动记录
+            List<CommentInteraction> interactions = commentInteractionRepository.findByCommentId(commentId);
+            for (CommentInteraction interaction : interactions) {
+                commentInteractionRepository.delete(interaction);
+            }
+            
+            // 再物理删除主评论
+            animeCommentRepository.deleteById(commentId);
+        }
+    }
+    
+    // 递归物理删除所有回复
+    private void deleteReplies(Long animeId, Long commentId) {
+        List<AnimeComment> replies = animeCommentRepository.findByAnimeIdAndParentIdOrderByCreateTimeAsc(animeId, commentId);
+        for (AnimeComment reply : replies) {
+            // 先递归删除回复的回复
+            deleteReplies(animeId, reply.getId());
+            
+            // 再删除回复的互动记录
+            List<CommentInteraction> replyInteractions = commentInteractionRepository.findByCommentId(reply.getId());
+            for (CommentInteraction interaction : replyInteractions) {
+                commentInteractionRepository.delete(interaction);
+            }
+            
+            // 最后物理删除回复
+            animeCommentRepository.deleteById(reply.getId());
+        }
+    }
+    
+    // 根据用户ID获取评论（先返回回复，再返回顶级评论，避免外键约束冲突）
+    public List<AnimeComment> getCommentsByAuthorId(Long authorId) {
+        List<AnimeComment> allComments = animeCommentRepository.findByAuthorIdOrderByCreateTimeDesc(authorId);
+        // 先返回回复（parent_id不为null），再返回顶级评论（parent_id为null）
+        List<AnimeComment> replies = allComments.stream()
+            .filter(comment -> comment.getParentId() != null)
+            .collect(java.util.stream.Collectors.toList());
+        List<AnimeComment> topLevelComments = allComments.stream()
+            .filter(comment -> comment.getParentId() == null)
+            .collect(java.util.stream.Collectors.toList());
+        replies.addAll(topLevelComments);
+        return replies;
+    }
+    
+    // 获取所有评论
+    public List<AnimeComment> getAllComments() {
+        return animeCommentRepository.findAll();
+    }
+    
+    // 删除用户的所有评论
+    @javax.transaction.Transactional
+    public void deleteByAuthorId(Long authorId) {
+        try {
+            System.out.println("开始删除用户的所有评论，用户ID: " + authorId);
+            
+            // 1. 获取用户的所有评论
+            List<AnimeComment> userComments = animeCommentRepository.findByAuthorIdOrderByCreateTimeDesc(authorId);
+            System.out.println("找到 " + userComments.size() + " 条评论");
+            
+            // 2. 收集所有评论ID
+            java.util.List<Long> commentIds = new java.util.ArrayList<>();
+            for (AnimeComment comment : userComments) {
+                commentIds.add(comment.getId());
+            }
+            
+            // 3. 删除这些评论的互动记录
+            System.out.println("删除用户评论的互动记录...");
+            for (Long commentId : commentIds) {
+                List<CommentInteraction> interactions = commentInteractionRepository.findByCommentId(commentId);
+                for (CommentInteraction interaction : interactions) {
+                    commentInteractionRepository.delete(interaction);
+                }
+            }
+            
+            // 4. 将所有引用用户评论的评论的parent_id设置为null，避免外键约束冲突
+            System.out.println("将引用用户评论的评论的parent_id设置为null...");
+            for (Long commentId : commentIds) {
+                animeCommentRepository.updateParentIdToNullByParentId(commentId);
+            }
+            
+            // 5. 然后删除用户的所有评论
+            System.out.println("删除用户的所有评论...");
+            animeCommentRepository.deleteCommentsByAuthorId(authorId);
+            
+            System.out.println("用户评论删除完成，用户ID: " + authorId);
+        } catch (Exception e) {
+            System.out.println("删除用户评论失败: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    // 根据动漫ID删除所有相关的评论
+    @javax.transaction.Transactional
+    public void deleteByAnimeId(Long animeId) {
+        try {
+            System.out.println("开始删除动漫的所有评论，动漫ID: " + animeId);
+            
+            // 1. 获取该动漫的所有评论
+            List<AnimeComment> allComments = animeCommentRepository.findByAnimeIdOrderByCreateTimeDesc(animeId);
+            System.out.println("找到 " + allComments.size() + " 条评论");
+            
+            // 2. 收集所有评论ID
+            java.util.List<Long> commentIds = new java.util.ArrayList<>();
+            for (AnimeComment comment : allComments) {
+                commentIds.add(comment.getId());
+            }
+            
+            // 3. 删除这些评论的互动记录
+            System.out.println("删除评论的互动记录...");
+            for (Long commentId : commentIds) {
+                List<CommentInteraction> interactions = commentInteractionRepository.findByCommentId(commentId);
+                for (CommentInteraction interaction : interactions) {
+                    commentInteractionRepository.delete(interaction);
+                }
+            }
+            
+            // 4. 将所有引用这些评论的评论的parent_id设置为null，避免外键约束冲突
+            System.out.println("将引用这些评论的评论的parent_id设置为null...");
+            for (Long commentId : commentIds) {
+                animeCommentRepository.updateParentIdToNullByParentId(commentId);
+            }
+            
+            // 5. 然后删除所有评论
+            System.out.println("删除所有评论...");
+            animeCommentRepository.deleteByAnimeId(animeId);
+            
+            System.out.println("动漫评论删除完成，动漫ID: " + animeId);
+        } catch (Exception e) {
+            System.out.println("删除动漫评论失败: " + e.getMessage());
+            e.printStackTrace();
+            // 如果还是失败，记录错误但不抛出异常，确保动漫删除流程继续
+        }
+    }
+}

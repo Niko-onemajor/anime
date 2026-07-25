@@ -8,8 +8,8 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    // 从localStorage获取token
-    const token = localStorage.getItem('token');
+    // 从localStorage获取token（优先），若无则从sessionStorage获取（兼容旧版）
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -33,8 +33,8 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       
       try {
-        // 获取刷新令牌
-        const refreshToken = localStorage.getItem('refreshToken');
+        // 获取刷新令牌（优先localStorage，兼容sessionStorage）
+        const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
         if (!refreshToken) {
           // 没有刷新令牌，跳转到登录页
           window.location.href = '/auth';

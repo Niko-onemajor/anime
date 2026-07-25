@@ -45,9 +45,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 User user = userService.findByUsername(username);
 
                 if (user != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // 根据用户角色创建权限
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(
-                            "ROLE_" + user.getRole().toUpperCase());
+                    // 归一化角色：admin/1 → ADMIN, 其余 → USER
+                    String role = user.getRole();
+                    String normalizedRole;
+                    if ("admin".equalsIgnoreCase(role) || "1".equals(role)) {
+                        normalizedRole = "ADMIN";
+                    } else {
+                        normalizedRole = "USER";
+                    }
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + normalizedRole);
 
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             user, null, Collections.singletonList(authority));

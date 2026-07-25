@@ -1,0 +1,417 @@
+<template>
+  <div class="message-container">
+    <!-- 导航栏 -->
+    <nav class="navbar">
+      <div class="navbar-container">
+        <div class="logo">Niko动漫</div>
+        <ul class="nav-links">
+          <li><a href="/index">首页</a></li>
+          <li><a href="/category">分类</a></li>
+          <li><a href="/forum">论坛</a></li>
+          <li><a href="/messages" class="active">信息</a></li>
+          <li><a href="/profile">个人中心</a></li>
+          <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- 信息内容 -->
+    <div class="content">
+      <div class="message-header">
+        <h2>我的消息</h2>
+        <div class="header-actions">
+          <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount }} 条未读</span>
+          <button v-if="unreadCount > 0" class="read-all-btn" @click="markAllAsRead">全部已读</button>
+        </div>
+      </div>
+
+      <!-- 加载状态 -->
+      <div v-if="isLoading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>加载中...</p>
+      </div>
+
+      <!-- 空状态 -->
+      <div v-else-if="notifications.length === 0" class="empty-container">
+        <p class="empty-text">暂无消息</p>
+      </div>
+
+      <!-- 通知列表 -->
+      <div v-else class="notification-list">
+        <div
+          v-for="notification in notifications"
+          :key="notification.id"
+          class="notification-item"
+          :class="{ unread: !notification.isRead }"
+          @click="markAsRead(notification)"
+        >
+          <div class="notification-icon">
+            <span v-if="notification.type === 'PASSWORD_RESET'" class="icon-reset">&#128274;</span>
+            <span v-else class="icon-default">&#128276;</span>
+          </div>
+          <div class="notification-content">
+            <p class="notification-message">{{ notification.message }}</p>
+            <span class="notification-time">{{ formatTime(notification.createTime) }}</span>
+          </div>
+          <div v-if="!notification.isRead" class="unread-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底栏 -->
+    <footer class="footer">
+      <div class="footer-content">
+        <p>© 2026 Niko动漫. 保留所有权利.</p>
+      </div>
+    </footer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import api from '@/utils/api';
+
+const isAdmin = ref(false);
+const isLoading = ref(true);
+const notifications = ref<any[]>([]);
+const unreadCount = ref(0);
+
+const checkAdmin = () => {
+  let role = localStorage.getItem('role');
+  if (!role) {
+    role = sessionStorage.getItem('role');
+  }
+  isAdmin.value = role === 'admin' || role === '1';
+};
+
+const loadNotifications = async () => {
+  const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+  if (!username) return;
+
+  try {
+    isLoading.value = true;
+    const response = await api.get('/api/notifications/list', {
+      params: { username }
+    });
+    if (response.data.code === 200) {
+      notifications.value = response.data.data || [];
+      unreadCount.value = response.data.unreadCount || 0;
+    }
+  } catch (error) {
+    console.error('获取通知失败:', error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const markAsRead = async (notification: any) => {
+  if (notification.isRead) return;
+  try {
+    await api.post('/api/notifications/read', { id: notification.id });
+    notification.isRead = true;
+    unreadCount.value = Math.max(0, unreadCount.value - 1);
+  } catch (error) {
+    console.error('标记已读失败:', error);
+  }
+};
+
+const markAllAsRead = async () => {
+  const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+  try {
+    await api.post('/api/notifications/read-all', { username });
+    notifications.value.forEach(n => n.isRead = true);
+    unreadCount.value = 0;
+  } catch (error) {
+    console.error('全部已读失败:', error);
+  }
+};
+
+const formatTime = (time: string) => {
+  if (!time) return '';
+  const date = new Date(time);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes} 分钟前`;
+  if (hours < 24) return `${hours} 小时前`;
+  if (days < 7) return `${days} 天前`;
+
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d} ${h}:${min}`;
+};
+
+onMounted(() => {
+  checkAdmin();
+  loadNotifications();
+});
+</script>
+
+<style scoped>
+.message-container {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+/* 导航栏样式 */
+.navbar {
+  background-color: #333;
+  color: white;
+  padding: 10px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 60px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff6b6b;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+}
+
+.nav-links li {
+  margin-left: 20px;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-size: 16px;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: #ff6b6b;
+}
+
+.nav-links a.active {
+  color: #ff6b6b;
+  font-weight: 500;
+}
+
+/* 内容区域 */
+.content {
+  max-width: 800px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.message-header h2 {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.unread-badge {
+  background: #ff6b6b;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.read-all-btn {
+  padding: 6px 16px;
+  background: white;
+  border: 1px solid #ff6b6b;
+  color: #ff6b6b;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.read-all-btn:hover {
+  background: #ff6b6b;
+  color: white;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff6b6b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  font-size: 16px;
+  color: #666;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background: white;
+  border-radius: 8px;
+}
+
+.empty-text {
+  font-size: 16px;
+  color: #999;
+}
+
+/* 通知列表 */
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+  position: relative;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background: #fafafa;
+}
+
+.notification-item.unread {
+  background: #fff8f0;
+}
+
+.notification-item.unread:hover {
+  background: #fff3e6;
+}
+
+.notification-icon {
+  margin-right: 14px;
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-message {
+  font-size: 15px;
+  color: #333;
+  margin: 0 0 6px 0;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.notification-time {
+  font-size: 13px;
+  color: #999;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: #ff6b6b;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 8px;
+  margin-left: 8px;
+}
+
+/* 底栏 */
+.footer {
+  background: #333;
+  color: #fff;
+  padding: 20px 0;
+  margin-top: 30px;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.footer-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #ccc;
+}
+
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 15px;
+  }
+
+  .nav-links li {
+    margin-left: 10px;
+  }
+
+  .nav-links a {
+    font-size: 14px;
+  }
+
+  .content {
+    padding: 0 15px;
+  }
+}
+</style>

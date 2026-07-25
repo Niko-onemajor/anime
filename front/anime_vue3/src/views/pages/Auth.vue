@@ -182,22 +182,22 @@ const handleSubmit = async () => {
     
     if (res.data.code === 200) {
       if (isLogin.value) {
-          // 登录成功，保存用户信息到sessionStorage
-          sessionStorage.setItem('token', res.data.data.token);
-          sessionStorage.setItem('refreshToken', res.data.data.refreshToken);
-          sessionStorage.setItem('username', res.data.data.username);
-          sessionStorage.setItem('role', res.data.data.role.toString());
-          sessionStorage.setItem('email', res.data.data.email || '');
+          // 登录成功，保存用户信息到localStorage（与api.ts拦截器保持一致）
+          localStorage.setItem('token', res.data.data.token);
+          localStorage.setItem('refreshToken', res.data.data.refreshToken);
+          localStorage.setItem('username', res.data.data.username);
+          localStorage.setItem('role', res.data.data.role.toString());
+          localStorage.setItem('email', res.data.data.email || '');
           // 存储生日为YYYY-MM-DD格式
           if (res.data.data.birthday) {
             const date = new Date(res.data.data.birthday);
             const formattedDate = date.toISOString().split('T')[0];
-            sessionStorage.setItem('birthday', formattedDate || '');
+            localStorage.setItem('birthday', formattedDate || '');
           } else {
-            sessionStorage.setItem('birthday', '');
+            localStorage.setItem('birthday', '');
           }
-          sessionStorage.setItem('favorite', res.data.data.favorite || '');
-          sessionStorage.setItem('avatar', res.data.data.avatar || '');
+          localStorage.setItem('favorite', res.data.data.favorite || '');
+          localStorage.setItem('avatar', res.data.data.avatar || '');
         // 根据角色跳转到不同页面
         if (res.data.data.role === 'admin' || res.data.data.role === 1) {
           // 管理员跳转到用户管理页面

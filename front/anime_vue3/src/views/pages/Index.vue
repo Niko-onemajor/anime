@@ -8,6 +8,7 @@
           <li class="nav-link active"><a href="/index">首页</a></li>
           <li class="nav-link"><a href="/category">分类</a></li>
           <li class="nav-link"><a href="/forum">论坛</a></li>
+          <li class="nav-link"><a href="/messages">信息</a></li>
           <li class="nav-link"><a href="/profile">个人中心</a></li>
           <li class="nav-link" v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -239,57 +240,6 @@ const currentRanking = computed(() => {
   }
 });
 
-// 加载排行榜数据
-const loadRankingData = async () => {
-  try {
-    // 并行请求所有排行榜数据
-    const [weeklyResponse, monthlyResponse, yearlyResponse] = await Promise.all([
-      axios.get('/api/anime/ranking/weekly'),
-      axios.get('/api/anime/ranking/monthly'),
-      axios.get('/api/anime/ranking/yearly')
-    ]);
-    
-    console.log('周榜数据响应:', weeklyResponse.data);
-    console.log('月榜数据响应:', monthlyResponse.data);
-    console.log('年榜数据响应:', yearlyResponse.data);
-    
-    // 填充排行榜数据
-    if (weeklyResponse.data && Array.isArray(weeklyResponse.data)) {
-      // 确保评分是数字类型
-      weeklyRanking.value = weeklyResponse.data.slice(0, 5).map(item => ({
-        ...item,
-        rating: Number(item.rating) || 0
-      }));
-      console.log('周榜数据加载成功:', weeklyRanking.value);
-    }
-    
-    if (monthlyResponse.data && Array.isArray(monthlyResponse.data)) {
-      // 确保评分是数字类型
-      monthlyRanking.value = monthlyResponse.data.slice(0, 5).map(item => ({
-        ...item,
-        rating: Number(item.rating) || 0
-      }));
-      console.log('月榜数据加载成功:', monthlyRanking.value);
-    }
-    
-    if (yearlyResponse.data && Array.isArray(yearlyResponse.data)) {
-      // 确保评分是数字类型
-      yearlyRanking.value = yearlyResponse.data.slice(0, 5).map(item => ({
-        ...item,
-        rating: Number(item.rating) || 0
-      }));
-      console.log('年榜数据加载成功:', yearlyRanking.value);
-    }
-    
-    console.log('排行榜数据加载完成');
-    console.log('当前周榜数据:', weeklyRanking.value);
-  } catch (error) {
-    console.error('加载排行榜数据失败:', error);
-    // 加载失败时使用默认数据
-    loadDefaultRankingData();
-  }
-};
-
 // 加载默认排行榜数据（当API调用失败时）
 const loadDefaultRankingData = () => {
   weeklyRanking.value = [
@@ -520,157 +470,83 @@ const addMainColorsToCarousel = async () => {
   }
 };
 
-// 加载热门动漫数据
-const loadPopularAnime = async () => {
+// 统一加载首页所有数据（并行请求，避免重复）
+const loadHomePageData = async () => {
   try {
-    console.log('开始加载周榜动漫...');
-    const res = await axios.get('/api/anime/ranking/weekly');
-    console.log('周榜动漫响应:', res.data);
-    if (res.data && Array.isArray(res.data)) {
-      // 确保评分是数字类型
-      popularAnime.value = res.data.map(item => ({
-        ...item,
-        rating: Number(item.rating) || 0
-      }));
-      // 轮播图使用前5个周榜动漫
-      carouselData.value = res.data.slice(0, 5).map(item => ({
-        ...item,
-        rating: Number(item.rating) || 0
-      }));
-      console.log('周榜动漫加载完成');
-      // 为轮播图添加主色调
-      await addMainColorsToCarousel();
-    }
-  } catch (error) {
-    console.error('加载周榜动漫失败:', error);
-  }
-};
+    // 并行请求所有数据，周榜只请求一次
+    const [weeklyRes, monthlyRes, yearlyRes, animeListRes, recommendRes] = await Promise.allSettled([
+      axios.get('/api/anime/ranking/weekly'),
+      axios.get('/api/anime/ranking/monthly'),
+      axios.get('/api/anime/ranking/yearly'),
+      axios.get('/api/anime/list'),
+      axios.post('/api/recommendation/personalized', {
+        username: localStorage.getItem('username') || 'user1'
+      })
+    ]);
 
-// 从后端获取动漫数据
-const loadAnimes = async () => {
-  try {
-    console.log('开始加载动漫数据...');
-    const response = await fetch('/api/anime/list');
-    console.log('API响应状态:', response.status);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('获取到的动漫数据：', data);
-      
-      // 检查数据格式
-      if (Array.isArray(data)) {
-        // 过滤出上架的动漫
-        const publishedAnimes = data.filter((anime: any) => anime.status === 1);
-        console.log('上架的动漫数量:', publishedAnimes.length);
-        
-        // 获取热门动漫作为轮播图数据
-        try {
-          const weeklyResponse = await fetch('/api/anime/ranking/weekly');
-          if (weeklyResponse.ok) {
-            const weeklyData = await weeklyResponse.json();
-            console.log('获取到的周榜动漫数据：', weeklyData);
-            
-            if (Array.isArray(weeklyData)) {
-              // 转换周榜动漫数据格式，确保评分是数字类型
-              carouselData.value = weeklyData.slice(0, 5).map((item: any) => ({
-                id: item.id,
-                title: item.title,
-                description: item.description || '',
-                image: item.image,
-                status: 1,
-                rating: Number(item.rating) || 0
-              }));
-              console.log('轮播图数据（周榜动漫）更新完成');
-              // 为轮播图添加主色调
-              await addMainColorsToCarousel();
-            }
-          } else {
-            console.error('获取周榜动漫失败，使用默认轮播图数据');
-            // 如果获取周榜动漫失败，使用默认数据
-            if (publishedAnimes.length > 0) {
-              carouselData.value = publishedAnimes.slice(0, 5).map((anime: any) => ({
-                id: anime.id,
-                title: anime.title,
-                description: anime.description,
-                image: anime.image,
-                status: anime.status
-              }));
-              console.log('轮播图数据（默认）更新完成');
-              // 为轮播图添加主色调
-              await addMainColorsToCarousel();
-            }
-          }
-        } catch (error) {
-          console.error('获取周榜动漫失败：', error);
-          // 如果获取周榜动漫失败，使用默认数据
-          if (publishedAnimes.length > 0) {
-            carouselData.value = publishedAnimes.slice(0, 5).map((anime: any) => ({
-              id: anime.id,
-              title: anime.title,
-              description: anime.description,
-              image: anime.image,
-              status: anime.status
-            }));
-            console.log('轮播图数据（默认）更新完成');
-            // 为轮播图添加主色调
-            await addMainColorsToCarousel();
-          }
-        }
-        
-        // 按年份排序（最新）
-        const sortedByYear = [...publishedAnimes].sort((a: any, b: any) => {
-          const yearA = parseInt(a.year) || 0;
-          const yearB = parseInt(b.year) || 0;
-          return yearB - yearA;
-        });
-        
-        // 更新新片上线数据
-        newAnimes.value = sortedByYear.slice(0, 4).map((anime: any) => ({
-          id: anime.id,
-          title: anime.title,
-          year: anime.year,
-          image: anime.image,
-          status: anime.status
+    // 处理周榜数据 → 轮播图 + 周榜排行 + 热门动漫
+    if (weeklyRes.status === 'fulfilled' && Array.isArray(weeklyRes.value.data)) {
+      const weekly = weeklyRes.value.data.map((item: any) => ({
+        ...item,
+        rating: Number(item.rating) || 0
+      }));
+      popularAnime.value = weekly;
+      carouselData.value = weekly.slice(0, 5);
+      weeklyRanking.value = weekly.slice(0, 5);
+      await addMainColorsToCarousel();
+    } else {
+      loadDefaultRankingData();
+    }
+
+    // 处理月榜
+    if (monthlyRes.status === 'fulfilled' && Array.isArray(monthlyRes.value.data)) {
+      monthlyRanking.value = monthlyRes.value.data.slice(0, 5).map((item: any) => ({
+        ...item,
+        rating: Number(item.rating) || 0
+      }));
+    }
+
+    // 处理年榜
+    if (yearlyRes.status === 'fulfilled' && Array.isArray(yearlyRes.value.data)) {
+      yearlyRanking.value = yearlyRes.value.data.slice(0, 5).map((item: any) => ({
+        ...item,
+        rating: Number(item.rating) || 0
+      }));
+    }
+
+    // 处理新片上线（取最新4部）
+    if (animeListRes.status === 'fulfilled' && Array.isArray(animeListRes.value.data)) {
+      const published = animeListRes.value.data.filter((a: any) => a.status === 1);
+      const sorted = [...published].sort((a: any, b: any) => (parseInt(b.year) || 0) - (parseInt(a.year) || 0));
+      newAnimes.value = sorted.slice(0, 4).map((a: any) => ({
+        id: a.id,
+        title: a.title,
+        year: a.year,
+        image: a.image,
+        status: a.status
+      }));
+    }
+
+    // 处理个性化推荐
+    if (recommendRes.status === 'fulfilled') {
+      const resData = recommendRes.value.data;
+      if (resData.code === 200 && resData.data && resData.data.length > 0) {
+        recommendations.value = resData.data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          category: item.category || item.genre,
+          image: item.image,
+          status: 1
         }));
-        console.log('新片上线数据更新完成');
       } else {
-        console.error('API返回的数据格式错误:', data);
+        loadDefaultRecommendations();
       }
     } else {
-      console.error('API请求失败，状态码:', response.status);
-    }
-  } catch (error) {
-    console.error('获取动漫数据失败:', error);
-  }
-};
-
-// 加载个性化推荐
-const loadRecommendations = async () => {
-  try {
-    const username = localStorage.getItem('username') || 'user1';
-    console.log('开始加载个性化推荐...');
-    const response = await axios.post('/api/recommendation/personalized', {
-      username: username
-    });
-    console.log('个性化推荐响应:', response.data);
-    
-    if (response.data.code === 200 && response.data.data && response.data.data.length > 0) {
-      recommendations.value = response.data.data.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        category: item.category || item.genre,
-        image: item.image,
-        status: 1
-      }));
-      console.log('个性化推荐加载完成');
-    } else {
-      // 如果没有推荐数据，使用默认推荐
-      console.log('没有推荐数据，使用默认推荐');
       loadDefaultRecommendations();
     }
   } catch (error) {
-    console.error('加载个性化推荐失败:', error);
-    // 加载失败时使用默认推荐
+    console.error('加载首页数据失败:', error);
+    loadDefaultRankingData();
     loadDefaultRecommendations();
   }
 };
@@ -725,11 +601,7 @@ onMounted(async () => {
   updateCarousel();
   startAutoplay();
   checkAdmin();
-  await loadAnimes();
-  await addMainColorsToCarousel();
-  loadRecommendations();
-  loadPopularAnime();
-  loadRankingData();
+  await loadHomePageData();
 });
 
 onUnmounted(() => {

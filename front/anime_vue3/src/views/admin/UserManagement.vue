@@ -121,7 +121,7 @@
             <!-- 只有在编辑用户时显示重置密码按钮 -->
             <div v-if="showEditUserDialog" class="form-group">
               <label>重置密码</label>
-              <button @click="resetPassword" class="reset-password-btn">重置密码为123456</button>
+              <button @click="resetPassword" class="reset-password-btn">重置密码</button>
             </div>
             <div class="form-group">
               <label for="avatar">头像</label>
@@ -457,6 +457,8 @@ const editUser = (user: any) => {
   userForm.value.gender = user.gender || '';
   userForm.value.region = user.region || '';
   userForm.value.signature = user.signature || '';
+  // 清空密码字段，避免发送截断的哈希值导致二次加密
+  userForm.value.password = '';
   // 清空修改密码相关字段
   userForm.value.oldPassword = '';
   userForm.value.newPassword = '';
@@ -579,7 +581,7 @@ const resetPassword = async () => {
   try {
     // 二次确认
     await ElMessageBox.confirm(
-      '确定要将该用户的密码重置为123456吗？',
+      '确定要重置该用户的密码吗？重置后将生成随机密码。',
       '确认重置密码',
       {
         confirmButtonText: '确定',
@@ -592,7 +594,14 @@ const resetPassword = async () => {
       id: userForm.value.id
     });
     if (res.data.code === 200) {
-      ElMessage.success('密码重置成功！新密码为：123456');
+      ElMessageBox.alert(
+        `密码重置成功！\n\n新密码为：${res.data.newPassword}\n\n请将该密码告知用户，用户登录后请尽快修改。`,
+        '重置成功',
+        {
+          confirmButtonText: '我知道了',
+          type: 'success'
+        }
+      );
     } else {
       ElMessage.error('密码重置失败：' + (res.data.msg || '未知错误'));
     }

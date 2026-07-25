@@ -8,6 +8,7 @@
           <li><a href="/index">首页</a></li>
           <li><a href="/category" class="active">分类</a></li>
           <li><a href="/forum">论坛</a></li>
+          <li><a href="/messages">信息</a></li>
           <li><a href="/profile">个人中心</a></li>
           <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -80,21 +81,37 @@
       <div class="loading-spinner"></div>
       <p>加载中...</p>
     </div>
-    <div v-else class="anime-container">
-      <div class="anime-item" v-for="anime in filteredAnimes" :key="anime.id" @click="goToDetail(anime)">
-        <div class="anime-image">
-          <img :src="getImageUrl(anime.image)" :alt="anime.title">
-        </div>
-        <div class="anime-info">
-          <h3 class="anime-title">{{ anime.title }}</h3>
-          <p class="anime-desc">{{ anime.description }}</p>
-          <div class="anime-meta">
-            <span class="anime-year">
-              {{ selectedSort === 'newest' ? anime.year : selectedSort === 'hottest' ? (anime.watchCount || 0) + '次观看' : (anime.rating || 0) + '分' }}
-            </span>
-            <span class="anime-genre">{{ anime.genre }}</span>
+    <div v-else class="anime-section">
+      <div class="anime-container">
+        <div class="anime-item" v-for="anime in displayedAnimes" :key="anime.id" @click="goToDetail(anime)">
+          <div class="anime-image">
+            <img :src="getImageUrl(anime.image)" :alt="anime.title">
+          </div>
+          <div class="anime-info">
+            <h3 class="anime-title">{{ anime.title }}</h3>
+            <p class="anime-desc">{{ anime.description }}</p>
+            <div class="anime-meta">
+              <span class="anime-year">
+                {{ selectedSort === 'newest' ? anime.year : selectedSort === 'hottest' ? (anime.watchCount || 0) + '次观看' : (anime.rating || 0) + '分' }}
+              </span>
+              <span class="anime-genre">{{ anime.genre }}</span>
+            </div>
           </div>
         </div>
+      </div>
+      <div class="pagination-container">
+        <button class="page-btn" @click="goToPage(1)" :disabled="currentPage === 1">首页</button>
+        <button class="page-btn" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">上一页</button>
+        <span 
+          v-for="p in pageNumbers" 
+          :key="p" 
+          class="page-num" 
+          :class="{ active: p === currentPage }"
+          @click="goToPage(p)"
+        >{{ p }}</span>
+        <button class="page-btn" @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages">下一页</button>
+        <button class="page-btn" @click="goToPage(totalPages)" :disabled="currentPage === totalPages">尾页</button>
+        <span class="page-total">共 {{ totalPages }} 页 / {{ filteredAnimes.length }} 条</span>
       </div>
     </div>
 
@@ -111,6 +128,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import api from '@/utils/api';
 
 const router = useRouter();
 
@@ -154,6 +172,8 @@ const selectedLetter = ref('All');
 const selectedSort = ref('newest');
 const sortOrder = ref('desc'); // 排序顺序：desc-降序，asc-升序
 const isLoading = ref(true); // 加载状态
+const currentPage = ref(1); // 当前页码
+const pageSize = 6; // 每页数量
 
 // 年份选项
 const years = ['All', '2026', '2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015', '2014', '2013', '2012', '2011', '2010'];
@@ -217,42 +237,26 @@ const resetFilterState = () => {
   saveFilterState();
 };
 
-// 加载动漫数据
+// 加载全部动漫数据（一次性加载，前端筛选+分页展示）
 const loadAnimeData = async () => {
   try {
-    // 获取所有动漫
-    const response = await fetch('http://localhost:8080/api/anime/list');
-    if (response.ok) {
-      const data = await response.json();
-      animes.value = data;
-    }
+    isLoading.value = true;
+    const response = await api.get('/api/anime/list');
+    const data = response.data;
+    animes.value = Array.isArray(data) ? data : [];
     
     // 为每个动漫获取观看次数
     for (let anime of animes.value) {
       try {
-        const watchCountResponse = await fetch(`http://localhost:8080/api/anime/watch-count/${anime.id}`);
-        if (watchCountResponse.ok) {
-          const watchCountData = await watchCountResponse.json();
-          anime.watchCount = watchCountData.watchCount || 0;
-        } else {
-          anime.watchCount = 0;
-        }
-      } catch (error) {
-        console.error(`获取动漫 ${anime.id} 的观看次数失败:`, error);
+        const watchCountRes = await api.get(`/api/anime/watch-count/${anime.id}`);
+        anime.watchCount = watchCountRes.data.watchCount || 0;
+      } catch {
         anime.watchCount = 0;
       }
     }
   } catch (error) {
     console.error('获取动漫数据失败:', error);
-    // 出错时确保所有动漫都有watchCount属性
-    if (animes.value.length > 0) {
-      animes.value = animes.value.map((anime: any) => ({
-        ...anime,
-        watchCount: 0
-      }));
-    }
   } finally {
-    // 数据加载完成，设置isLoading为false
     isLoading.value = false;
   }
 };
@@ -396,28 +400,67 @@ const filteredAnimes = computed(() => {
   return result;
 });
 
+// 分页展示：从筛选结果中取当前页
+const displayedAnimes = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredAnimes.value.slice(start, start + pageSize);
+});
+
+// 总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredAnimes.value.length / pageSize) || 1;
+});
+
+// 显示的页码按钮（最多显示7个）
+const pageNumbers = computed(() => {
+  const total = totalPages.value;
+  const curr = currentPage.value;
+  const pages: number[] = [];
+  
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (curr > 3) pages.push(-1); // 用 -1 表示省略号
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (curr < total - 2) pages.push(-1);
+    pages.push(total);
+  }
+  return pages;
+});
+
+// 跳转到指定页
+const goToPage = (page: number) => {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+};
+
 // 处理搜索
 const handleSearch = () => {
-  // 搜索逻辑已在computed中实现
+  currentPage.value = 1;
   saveFilterState();
 };
 
 // 选择年份
 const selectYear = (year: string) => {
   selectedYear.value = year;
+  currentPage.value = 1;
   saveFilterState();
 };
 
 // 选择首字母
 const selectLetter = (letter: string) => {
   selectedLetter.value = letter;
+  currentPage.value = 1;
   saveFilterState();
 };
 
 // 选择排序
 const selectSort = (sort: string) => {
   selectedSort.value = sort;
-  // 保存排序状态到localStorage
+  currentPage.value = 1;
   saveFilterState();
 };
 
@@ -733,6 +776,72 @@ const saveFilterState = () => {
   background: #f0f0f0;
   padding: 2px 8px;
   border-radius: 10px;
+}
+
+/* 分页样式 */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.page-btn {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.3s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-btn:disabled {
+  background: #f5f5f5;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.page-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  background: white;
+  transition: all 0.3s;
+}
+
+.page-num:hover {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-num.active {
+  background: #ff6b6b;
+  color: white;
+  border-color: #ff6b6b;
+}
+
+.page-total {
+  font-size: 14px;
+  color: #999;
+  margin-left: 8px;
 }
 
 /* 版权信息样式 */

@@ -171,7 +171,13 @@ public class AdminController {
                 existingUser.setRole(user.getRole());
                 // 如果密码不为空，更新密码（使用加密密码）
                 if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-                    existingUser.setPassword(userService.encodePassword(user.getPassword()));
+                    // 防止二次加密：如果密码已经是BCrypt格式，则不再加密
+                    if (user.getPassword().startsWith("$2a$")) {
+                        // 密码已是BCrypt格式，直接使用
+                        existingUser.setPassword(user.getPassword());
+                    } else {
+                        existingUser.setPassword(userService.encodePassword(user.getPassword()));
+                    }
                 }
                 // 更新头像
                 if (user.getAvatar() != null) {
@@ -294,13 +300,21 @@ public class AdminController {
                 return response;
             }
             
-            // 重置密码为123456
-            String defaultPassword = "123456";
-            user.setPassword(userService.encodePassword(defaultPassword));
+            // 生成8位随机密码（字母+数字）
+            String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+            StringBuilder sb = new StringBuilder();
+            java.security.SecureRandom random = new java.security.SecureRandom();
+            for (int i = 0; i < 8; i++) {
+                sb.append(chars.charAt(random.nextInt(chars.length())));
+            }
+            String newPassword = sb.toString();
+            
+            user.setPassword(userService.encodePassword(newPassword));
             userService.save(user);
             
             response.put("code", 200);
             response.put("msg", "密码重置成功");
+            response.put("newPassword", newPassword);
         } catch (Exception e) {
             e.printStackTrace();
             response.put("code", 500);

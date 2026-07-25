@@ -478,9 +478,11 @@ const posts = ref<Post[]>([]);
 // 加载帖子列表
 const loadPosts = async () => {
   try {
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts');
-    if (res.data.code === 200) {
-      posts.value = res.data.data.map((post: any) => ({
+    const res = await axios.get('http://localhost:8080/api/post/list');
+    // GET /api/post/list 直接返回帖子数组
+    const postList = res.data;
+    if (postList && Array.isArray(postList)) {
+      posts.value = postList.map((post: any) => ({
         ...post,
         authorName: post.author?.username || '未知用户',
         authorAvatar: post.author?.avatar || '',
@@ -619,7 +621,7 @@ const submitPost = async () => {
   try {
     if (isEditing.value && editingPostId.value) {
       // 编辑帖子
-      const res = await axios.post('http://localhost:8080/api/admin/forum/posts/update', {
+      const res = await axios.post('http://localhost:8080/api/post/update', {
         id: editingPostId.value,
         title: postForm.value.title,
         content: postForm.value.content
@@ -694,10 +696,8 @@ const deletePost = async (postId: number) => {
       type: 'warning'
     });
     
-    const res = await axios.post('http://localhost:8080/api/admin/forum/posts/delete', {
-      id: postId
-    });
-    if (res.data.code === 200) {
+    const res = await axios.delete(`http://localhost:8080/api/post/delete/${postId}`);
+    if (res.status === 200) {
       ElMessage.success('帖子删除成功！');
       await loadPosts();
     }
@@ -904,8 +904,8 @@ const deleteComment = async (postId: number, commentId: number) => {
       type: 'warning'
     });
     
-    const res = await axios.post('http://localhost:8080/api/admin/forum/comments/delete', {
-      id: commentId
+    const res = await axios.post('http://localhost:8080/api/comment/deleteComment', {
+      commentId: commentId
     });
     if (res.data.code === 200) {
       const post = posts.value.find(p => p.id === postId);

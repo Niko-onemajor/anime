@@ -24,6 +24,21 @@ public class PostController {
         return postService.getAllPosts();
     }
 
+    // 获取所有帖子（POST方式，返回统一格式）
+    @PostMapping("/list")
+    public Map<String, Object> getPostsList() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<Post> posts = postService.findAll();
+            response.put("code", 200);
+            response.put("data", posts);
+        } catch (Exception e) {
+            response.put("code", 500);
+            response.put("msg", "获取帖子列表失败");
+        }
+        return response;
+    }
+
     // 根据ID获取帖子
     @GetMapping("/detail/{id}")
     public Post getPost(@PathVariable Long id) {

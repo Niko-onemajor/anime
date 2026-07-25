@@ -65,12 +65,7 @@ public class UserService {
         }
         
         // 验证密码格式
-        if (password == null || password.length() < 6 || password.length() > 20) {
-            throw new IllegalArgumentException("密码长度必须在6-20个字符之间");
-        }
-        if (password.contains(" ")) {
-            throw new IllegalArgumentException("密码不能包含空格");
-        }
+        validatePasswordComplexity(password);
 
         // 检查用户名是否已存在（只检查未删除的用户，区分大小写）
         // 先查询所有未删除的用户
@@ -247,6 +242,41 @@ public class UserService {
     // 密码加密
     public String encodePassword(String password) {
         return passwordEncoder.encode(password);
+    }
+    
+    // 密码复杂度校验
+    public void validatePasswordComplexity(String password) {
+        // 长度校验
+        if (password == null || password.length() < 8 || password.length() > 20) {
+            throw new IllegalArgumentException("密码长度必须在8-20个字符之间");
+        }
+        if (password.contains(" ")) {
+            throw new IllegalArgumentException("密码不能包含空格");
+        }
+        
+        // 弱密码黑名单
+        String[] weakPasswords = {
+            "12345678", "123456789", "1234567890", "password", "Password",
+            "qwertyui", "asdfghjkl", "zxcvbnm", "11111111", "00000000",
+            "admin123", "admin1234", "user1234", "test1234"
+        };
+        for (String weak : weakPasswords) {
+            if (password.equalsIgnoreCase(weak)) {
+                throw new IllegalArgumentException("密码过于简单，请使用更复杂的密码");
+            }
+        }
+        
+        // 复杂度：必须包含大写字母、小写字母、数字中的至少两种
+        boolean hasUpper = false, hasLower = false, hasDigit = false;
+        for (char c : password.toCharArray()) {
+            if (Character.isUpperCase(c)) hasUpper = true;
+            if (Character.isLowerCase(c)) hasLower = true;
+            if (Character.isDigit(c)) hasDigit = true;
+        }
+        int categoryCount = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasDigit ? 1 : 0);
+        if (categoryCount < 2) {
+            throw new IllegalArgumentException("密码必须包含大写字母、小写字母、数字中的至少两种");
+        }
     }
     
     // 生成激活码

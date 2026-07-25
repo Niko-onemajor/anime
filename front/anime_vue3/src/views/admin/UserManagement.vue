@@ -112,10 +112,17 @@
             <div class="form-group" v-if="!showEditUserDialog">
               <label for="password">密码</label>
               <div class="password-input">
-                <input :type="showPassword ? 'text' : 'password'" id="password" v-model="userForm.password" placeholder="请输入密码" class="form-input">
+                <input :type="showPassword ? 'text' : 'password'" id="password" v-model="userForm.password" placeholder="请输入密码（8-20个字符，需含大小写字母和数字中至少两种）" class="form-input">
                 <button type="button" class="toggle-password" @click="showPassword = !showPassword">
                   {{ showPassword ? '隐藏' : '显示' }}
                 </button>
+              </div>
+              <!-- 密码强度指示器 -->
+              <div v-if="userForm.password" class="password-strength">
+                <div class="strength-bar">
+                  <div class="strength-fill" :class="strengthClass" :style="{ width: strengthPercent + '%' }"></div>
+                </div>
+                <span class="strength-text" :class="strengthClass">{{ strengthText }}</span>
               </div>
             </div>
             <!-- 只有在编辑用户时显示重置密码按钮 -->
@@ -216,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/utils/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
@@ -284,6 +291,33 @@ const userForm = ref({
 
 // 密码显示/隐藏状态
 const showPassword = ref(false);
+
+// 密码强度计算
+const passwordStrength = computed(() => {
+  const pwd = userForm.value.password;
+  if (!pwd) return 0;
+  let score = 0;
+  if (pwd.length >= 8) score += 25;
+  if (pwd.length >= 12) score += 10;
+  if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score += 25;
+  if (/\d/.test(pwd)) score += 20;
+  if (/[^a-zA-Z0-9]/.test(pwd)) score += 20;
+  return Math.min(score, 100);
+});
+
+const strengthPercent = computed(() => passwordStrength.value);
+const strengthClass = computed(() => {
+  const s = passwordStrength.value;
+  if (s >= 80) return 'strong';
+  if (s >= 50) return 'medium';
+  return 'weak';
+});
+const strengthText = computed(() => {
+  const s = passwordStrength.value;
+  if (s >= 80) return '强';
+  if (s >= 50) return '中';
+  return '弱';
+});
 
 // 头像文件
 const avatarFile = ref<File | null>(null);
@@ -1236,4 +1270,52 @@ onMounted(() => {
     font-size: 14px;
     text-align: center;
   }
+
+/* 密码强度指示器 */
+.password-strength {
+  margin-top: 8px;
+}
+
+.strength-bar {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s, background 0.3s;
+}
+
+.strength-fill.weak {
+  background: #f56c6c;
+}
+
+.strength-fill.medium {
+  background: #e6a23c;
+}
+
+.strength-fill.strong {
+  background: #67c23a;
+}
+
+.strength-text {
+  font-size: 12px;
+  margin-top: 2px;
+  display: inline-block;
+}
+
+.strength-text.weak {
+  color: #f56c6c;
+}
+
+.strength-text.medium {
+  color: #e6a23c;
+}
+
+.strength-text.strong {
+  color: #67c23a;
+}
 </style>

@@ -266,11 +266,7 @@ public class AdminController {
             }
             
             // 验证新密码格式
-            if (newPassword == null || newPassword.length() < 6 || newPassword.length() > 20) {
-                response.put("code", 400);
-                response.put("msg", "密码长度必须在6-20个字符之间");
-                return response;
-            }
+            userService.validatePasswordComplexity(newPassword);
             
             // 更新密码
             user.setPassword(userService.encodePassword(newPassword));
@@ -278,6 +274,9 @@ public class AdminController {
             
             response.put("code", 200);
             response.put("msg", "密码修改成功");
+        } catch (IllegalArgumentException e) {
+            response.put("code", 400);
+            response.put("msg", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             response.put("code", 500);

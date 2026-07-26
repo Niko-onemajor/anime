@@ -56,7 +56,6 @@
             <span class="stat-item">发布时间：{{ formatTime(post.createTime) }}</span>
           </div>
           <div class="post-actions">
-            <button @click="editPost(post)" class="edit-btn">编辑</button>
             <button @click="showDeleteConfirm(post.id)" class="delete-btn">删除</button>
             <button @click="toggleComments(post.id)" class="comments-btn">
               {{ showComments[post.id] ? '隐藏评论' : '管理评论' }}
@@ -96,7 +95,6 @@
                 <span class="stat-item">发布时间：{{ formatTime(comment.createTime) }}</span>
               </div>
               <div class="comment-actions">
-                <button @click="editComment(post.id, comment)" class="edit-btn small">编辑</button>
                 <button @click="showCommentDeleteConfirm(post.id, comment.id)" class="delete-btn small">删除</button>
               </div>
 
@@ -142,52 +140,7 @@
         <span class="page-total">共 {{ postTotalPages }} 页 / {{ posts.length }} 条</span>
       </div>
 
-      <!-- 编辑帖子对话框 -->
-      <div class="dialog-overlay" v-if="showEditPostDialog">
-        <div class="dialog-content">
-          <div class="dialog-header">
-            <h3>编辑帖子</h3>
-            <button @click="closePostDialog" class="close-btn">×</button>
-          </div>
-          <div class="dialog-body">
-            <div class="form-group">
-              <label for="post-title">标题</label>
-              <input type="text" id="post-title" v-model="postForm.title" placeholder="请输入帖子标题" class="form-input">
-            </div>
-            <div class="form-group">
-              <label for="post-content">内容</label>
-              <textarea id="post-content" v-model="postForm.content" placeholder="请输入帖子内容" class="form-textarea"></textarea>
-            </div>
-          </div>
-          <div class="dialog-footer">
-            <button @click="closePostDialog" class="btn cancel-btn">取消</button>
-            <button @click="updatePost" class="btn submit-btn">保存</button>
-          </div>
-        </div>
       </div>
-
-      <!-- 编辑评论对话框 -->
-      <div class="dialog-overlay" v-if="showEditCommentDialog">
-        <div class="dialog-content">
-          <div class="dialog-header">
-            <h3>编辑评论</h3>
-            <button @click="closeCommentDialog" class="close-btn">×</button>
-          </div>
-          <div class="dialog-body">
-            <div class="form-group">
-              <label for="comment-content">内容</label>
-              <textarea id="comment-content" v-model="commentForm.content" placeholder="请输入评论内容" class="form-textarea"></textarea>
-            </div>
-          </div>
-          <div class="dialog-footer">
-            <button @click="closeCommentDialog" class="btn cancel-btn">取消</button>
-            <button @click="updateComment" class="btn submit-btn">保存</button>
-          </div>
-        </div>
-      </div>
-
-
-    </div>
 
     <!-- 版权信息 -->
     <footer class="footer">
@@ -285,25 +238,9 @@ const commentSortBy = ref<Record<number, string>>({});
 const commentSortDirection = ref<Record<number, string>>({});
 
 // 对话框状态
-const showEditPostDialog = ref(false);
 const showDeleteConfirmDialog = ref(false);
 const postToDelete = ref(0);
-const showEditCommentDialog = ref(false);
 const commentToDelete = ref({ postId: 0, commentId: 0 });
-
-// 帖子表单
-const postForm = ref({
-  id: 0,
-  title: '',
-  content: ''
-});
-
-// 评论表单
-const commentForm = ref({
-  id: 0,
-  postId: 0,
-  content: ''
-});
 
 // 加载帖子列表
 const loadPosts = async () => {
@@ -364,27 +301,6 @@ const sortPosts = async () => {
         }
   } catch (error) {
     console.error('排序帖子失败：', error);
-  }
-};
-
-// 编辑帖子
-const editPost = (post: any) => {
-  postForm.value = { ...post };
-  showEditPostDialog.value = true;
-};
-
-// 更新帖子
-const updatePost = async () => {
-  try {
-    const res = await api.post('http://localhost:8080/api/admin/forum/posts/update', postForm.value);
-    if (res.data.code === 200) {
-      ElMessage.success('帖子更新成功！');
-      closePostDialog();
-      loadPosts();
-    }
-  } catch (error) {
-    console.error('更新帖子失败：', error);
-    ElMessage.error('更新帖子失败，请重试');
   }
 };
 
@@ -517,28 +433,6 @@ const toggleCommentSort = (postId: number) => {
 
 
 
-// 编辑评论
-const editComment = (postId: number, comment: any) => {
-  commentForm.value = { ...comment, postId };
-  showEditCommentDialog.value = true;
-};
-
-// 更新评论
-const updateComment = async () => {
-  try {
-    const res = await api.post('http://localhost:8080/api/admin/forum/comments/update', commentForm.value);
-    if (res.data.code === 200) {
-      ElMessage.success('评论更新成功！');
-      closeCommentDialog();
-      // 重新加载评论
-      await loadComments(commentForm.value.postId);
-    }
-  } catch (error) {
-    console.error('更新评论失败：', error);
-    ElMessage.error('更新评论失败，请重试');
-  }
-};
-
 // 显示评论删除确认对话框
 const showCommentDeleteConfirm = async (postId: number, commentId: number) => {
   try {
@@ -583,26 +477,6 @@ const confirmCommentDelete = async () => {
     ElMessage.error('删除评论失败，请重试');
     showDeleteConfirmDialog.value = false;
   }
-};
-
-// 关闭帖子对话框
-const closePostDialog = () => {
-  showEditPostDialog.value = false;
-  postForm.value = {
-    id: 0,
-    title: '',
-    content: ''
-  };
-};
-
-// 关闭评论对话框
-const closeCommentDialog = () => {
-  showEditCommentDialog.value = false;
-  commentForm.value = {
-    id: 0,
-    postId: 0,
-    content: ''
-  };
 };
 
 // 格式化时间

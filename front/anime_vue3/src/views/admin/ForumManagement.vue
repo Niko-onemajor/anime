@@ -100,6 +100,27 @@
                 <button @click="showCommentDeleteConfirm(post.id, comment.id)" class="delete-btn small">删除</button>
               </div>
 
+              <!-- 回复列表 -->
+              <div v-if="comment.replies && comment.replies.length > 0" class="replies-list">
+                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                  <div class="reply-header">
+                    <div class="comment-author-info">
+                      <img :src="getImageUrl(reply.authorAvatar) || '/src/avatars/avatar1.jpg'" :alt="reply.authorName" class="author-avatar small">
+                      <span class="comment-author">{{ reply.authorName }}</span>
+                      <span v-if="reply.replyToName" class="reply-to">回复 @{{ reply.replyToName }}</span>
+                    </div>
+                  </div>
+                  <div class="reply-content">{{ reply.content }}</div>
+                  <div class="comment-stats">
+                    <span class="stat-item">点赞：{{ reply.likeCount || 0 }}</span>
+                    <span class="stat-item">点踩：{{ reply.dislikeCount || 0 }}</span>
+                    <span class="stat-item">发布时间：{{ formatTime(reply.createTime) }}</span>
+                  </div>
+                  <div class="comment-actions">
+                    <button @click="showCommentDeleteConfirm(post.id, reply.id)" class="delete-btn small">删除</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1048,6 +1069,42 @@ onUnmounted(() => {
 .delete-btn.small {
   padding: 4px 12px;
   font-size: 12px;
+}
+
+/* 回复列表样式 */
+.replies-list {
+  margin-top: 12px;
+  margin-left: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply-item {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.reply-content {
+  margin-bottom: 8px;
+  line-height: 1.4;
+  color: #333;
+  font-size: 13px;
+}
+
+.reply-to {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin-left: 4px;
 }
 
 

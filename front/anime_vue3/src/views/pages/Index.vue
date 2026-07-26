@@ -8,7 +8,7 @@
           <li class="nav-link active"><a href="/index">首页</a></li>
           <li class="nav-link"><a href="/category">分类</a></li>
           <li class="nav-link"><a href="/forum">论坛</a></li>
-          <li class="nav-link"><a href="/messages">信息</a></li>
+          <li class="nav-link"><a href="/messages">消息</a></li>
           <li class="nav-link"><a href="/profile">个人中心</a></li>
           <li class="nav-link" v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>

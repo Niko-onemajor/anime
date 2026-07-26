@@ -8,7 +8,7 @@
           <li><a href="/index">首页</a></li>
           <li><a href="/category">分类</a></li>
           <li><a href="/forum">论坛</a></li>
-          <li><a href="/messages">信息</a></li>
+          <li><a href="/messages">消息</a></li>
           <li><a href="/profile" class="active">个人中心</a></li>
           <li v-if="role === 'admin' || role === '1'"><a href="/admin/users">管理员后台</a></li>
         </ul>

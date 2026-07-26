@@ -8,7 +8,7 @@
           <li><a href="/index">首页</a></li>
           <li><a href="/category">分类</a></li>
           <li><a href="/forum">论坛</a></li>
-          <li><a href="/messages" class="active">信息</a></li>
+          <li><a href="/messages" class="active">消息</a></li>
           <li><a href="/profile">个人中心</a></li>
           <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -47,9 +47,14 @@
         >
           <div class="notification-icon">
             <span v-if="notification.type === 'PASSWORD_RESET'" class="icon-reset">&#128274;</span>
+            <span v-else-if="notification.type === 'FORUM_REPLY'" class="icon-reply">&#128172;</span>
+            <span v-else-if="notification.type === 'FORUM_LIKE'" class="icon-like">&#128077;</span>
+            <span v-else-if="notification.type === 'ANIME_REPLY'" class="icon-reply">&#128172;</span>
+            <span v-else-if="notification.type === 'ANIME_LIKE'" class="icon-like">&#128077;</span>
             <span v-else class="icon-default">&#128276;</span>
           </div>
           <div class="notification-content">
+            <span v-if="getTypeLabel(notification.type)" class="notification-type">{{ getTypeLabel(notification.type) }}</span>
             <p class="notification-message">{{ notification.message }}</p>
             <span class="notification-time">{{ formatTime(notification.createTime) }}</span>
           </div>
@@ -146,6 +151,18 @@ const formatTime = (time: string) => {
   const h = String(date.getHours()).padStart(2, '0');
   const min = String(date.getMinutes()).padStart(2, '0');
   return `${y}-${m}-${d} ${h}:${min}`;
+};
+
+// 获取通知类型标签
+const getTypeLabel = (type: string) => {
+  const labels: Record<string, string> = {
+    FORUM_REPLY: '论坛回复',
+    FORUM_LIKE: '论坛点赞',
+    ANIME_REPLY: '动漫回复',
+    ANIME_LIKE: '动漫点赞',
+    PASSWORD_RESET: '密码重置'
+  };
+  return labels[type] || '';
 };
 
 onMounted(() => {
@@ -351,6 +368,16 @@ onMounted(() => {
 .notification-content {
   flex: 1;
   min-width: 0;
+}
+
+.notification-type {
+  display: inline-block;
+  font-size: 12px;
+  color: #ff6b6b;
+  background: #fff0f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
 }
 
 .notification-message {

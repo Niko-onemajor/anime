@@ -2,8 +2,11 @@ package com.example.anime.service;
 
 import com.example.anime.model.Comment;
 import com.example.anime.model.ForumCommentInteraction;
+import com.example.anime.model.Post;
+import com.example.anime.model.User;
 import com.example.anime.repository.CommentRepository;
 import com.example.anime.repository.ForumCommentInteractionRepository;
+import com.example.anime.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +21,15 @@ public class CommentService {
     
     @Autowired
     private ForumCommentInteractionRepository forumCommentInteractionRepository;
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private PostRepository postRepository;
 
     // 添加评论
     public Comment addComment(Long postId, Long authorId, String content) {
@@ -34,7 +46,29 @@ public class CommentService {
         comment.setCreateTime(new Date());
         comment.setLikeCount(0);
         comment.setDislikeCount(0);
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+
+        // 回复评论时通知被回复用户
+        if (parentId != null) {
+            Comment parentComment = commentRepository.findById(parentId).orElse(null);
+            if (parentComment != null && !parentComment.getAuthorId().equals(authorId)) {
+                User targetUser = userService.findById(parentComment.getAuthorId());
+                User fromUser = userService.findById(authorId);
+                Post post = postRepository.findById(postId).orElse(null);
+                if (targetUser != null && fromUser != null && post != null) {
+                    String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
+                    notificationService.notifyForumReply(
+                            targetUser.getId(),
+                            targetUser.getUsername(),
+                            fromUser.getUsername(),
+                            postTitle,
+                            content
+                    );
+                }
+            }
+        }
+
+        return savedComment;
     }
 
     // 获取帖子的顶级评论（不含回复）
@@ -109,6 +143,7 @@ public class CommentService {
 
     // 点赞评论
     public Comment likeComment(Long commentId, Long userId) {
+        boolean likeAdded = false;
         // 检查用户是否已经对该评论进行过互动
         Optional<ForumCommentInteraction> existingInteraction = forumCommentInteractionRepository.findByUserIdAndCommentId(userId, commentId);
         if (existingInteraction.isPresent()) {
@@ -124,6 +159,7 @@ public class CommentService {
                 interaction.setInteractionType(1); // 1: 点赞
                 interaction.setCreateTime(new Date());
                 forumCommentInteractionRepository.save(interaction);
+                likeAdded = true;
             }
         } else {
             // 没有互动过，添加点赞
@@ -133,6 +169,7 @@ public class CommentService {
             interaction.setInteractionType(1); // 1: 点赞
             interaction.setCreateTime(new Date());
             forumCommentInteractionRepository.save(interaction);
+            likeAdded = true;
         }
         
         Optional<Comment> commentOptional = commentRepository.findById(commentId);
@@ -141,7 +178,25 @@ public class CommentService {
             Comment comment = commentOptional.get();
             comment.setLikeCount(forumCommentInteractionRepository.countByCommentIdAndInteractionType(commentId, 1));
             comment.setDislikeCount(forumCommentInteractionRepository.countByCommentIdAndInteractionType(commentId, 2));
-            return commentRepository.save(comment);
+            Comment savedComment = commentRepository.save(comment);
+
+            // 新增点赞时通知评论作者（不通知自己）
+            if (likeAdded && !comment.getAuthorId().equals(userId)) {
+                User targetUser = userService.findById(comment.getAuthorId());
+                User fromUser = userService.findById(userId);
+                Post post = postRepository.findById(comment.getPostId()).orElse(null);
+                if (targetUser != null && fromUser != null && post != null) {
+                    String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
+                    notificationService.notifyForumLike(
+                            targetUser.getId(),
+                            targetUser.getUsername(),
+                            fromUser.getUsername(),
+                            postTitle
+                    );
+                }
+            }
+
+            return savedComment;
         }
         return null;
     }

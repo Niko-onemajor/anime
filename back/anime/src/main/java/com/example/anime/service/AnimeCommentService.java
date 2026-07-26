@@ -1,8 +1,11 @@
 package com.example.anime.service;
 
+import com.example.anime.model.Anime;
 import com.example.anime.model.AnimeComment;
 import com.example.anime.model.CommentInteraction;
+import com.example.anime.model.User;
 import com.example.anime.repository.AnimeCommentRepository;
+import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.CommentInteractionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,15 @@ public class AnimeCommentService {
     @Autowired
     private CommentInteractionRepository commentInteractionRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private AnimeRepository animeRepository;
+
     // 保存评论
     public AnimeComment saveComment(Long animeId, Long authorId, String content, Long parentId) {
         AnimeComment comment = new AnimeComment();
@@ -30,7 +42,29 @@ public class AnimeCommentService {
         comment.setLikeCount(0);
         comment.setDislikeCount(0);
 
-        return animeCommentRepository.save(comment);
+        AnimeComment savedComment = animeCommentRepository.save(comment);
+
+        // 回复评论时通知被回复用户
+        if (parentId != null) {
+            AnimeComment parentComment = animeCommentRepository.findById(parentId).orElse(null);
+            if (parentComment != null && !parentComment.getAuthorId().equals(authorId)) {
+                User targetUser = userService.findById(parentComment.getAuthorId());
+                User fromUser = userService.findById(authorId);
+                Anime anime = animeRepository.findById(animeId).orElse(null);
+                if (targetUser != null && fromUser != null && anime != null) {
+                    String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
+                    notificationService.notifyAnimeReply(
+                            targetUser.getId(),
+                            targetUser.getUsername(),
+                            fromUser.getUsername(),
+                            animeTitle,
+                            content
+                    );
+                }
+            }
+        }
+
+        return savedComment;
     }
 
     // 获取动漫的所有顶级评论（不包含回复）
@@ -49,6 +83,7 @@ public class AnimeCommentService {
 
     // 点赞评论
     public AnimeComment likeComment(Long commentId, Long userId) {
+        boolean likeAdded = false;
         // 检查用户是否已经对该评论进行过互动
         Optional<CommentInteraction> existingInteraction = commentInteractionRepository.findByUserIdAndCommentId(userId, commentId);
         if (existingInteraction.isPresent()) {
@@ -64,6 +99,7 @@ public class AnimeCommentService {
                 interaction.setInteractionType(1); // 1: 点赞
                 interaction.setCreateTime(new Date());
                 commentInteractionRepository.save(interaction);
+                likeAdded = true;
             }
         } else {
             // 没有互动过，添加点赞
@@ -73,6 +109,7 @@ public class AnimeCommentService {
             interaction.setInteractionType(1); // 1: 点赞
             interaction.setCreateTime(new Date());
             commentInteractionRepository.save(interaction);
+            likeAdded = true;
         }
         
         Optional<AnimeComment> commentOptional = animeCommentRepository.findById(commentId);
@@ -81,7 +118,25 @@ public class AnimeCommentService {
             AnimeComment comment = commentOptional.get();
             comment.setLikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 1));
             comment.setDislikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 2));
-            return animeCommentRepository.save(comment);
+            AnimeComment savedComment = animeCommentRepository.save(comment);
+
+            // 新增点赞时通知评论作者（不通知自己）
+            if (likeAdded && !comment.getAuthorId().equals(userId)) {
+                User targetUser = userService.findById(comment.getAuthorId());
+                User fromUser = userService.findById(userId);
+                Anime anime = animeRepository.findById(comment.getAnimeId()).orElse(null);
+                if (targetUser != null && fromUser != null && anime != null) {
+                    String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
+                    notificationService.notifyAnimeLike(
+                            targetUser.getId(),
+                            targetUser.getUsername(),
+                            fromUser.getUsername(),
+                            animeTitle
+                    );
+                }
+            }
+
+            return savedComment;
         }
         return null;
     }

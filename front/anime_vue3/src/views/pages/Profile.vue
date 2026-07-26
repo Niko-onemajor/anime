@@ -122,8 +122,10 @@
           <!-- 观看记录 -->
           <div v-if="activeTab === 'watch-history' && !isViewingOtherUser">
             <h3>观看记录</h3>
-            <!-- 排序控制 -->
             <div class="watch-history-controls">
+              <div class="search-box">
+                <input type="text" v-model="watchHistorySearch" placeholder="搜索动漫名称..." class="search-input">
+              </div>
               <div class="sort-controls">
                 <span class="sort-label">排序方式：</span>
                 <span 
@@ -142,9 +144,9 @@
               </div>
             </div>
             <div v-if="loading" class="loading">加载中...</div>
-            <div v-else-if="sortedWatchHistory.length === 0" class="no-history">暂无观看记录</div>
+            <div v-else-if="filteredWatchHistory.length === 0" class="no-history">暂无观看记录</div>
             <div v-else class="watch-history-list">
-              <div v-for="(history, index) in sortedWatchHistory" :key="history.id" class="watch-history-item">
+              <div v-for="(history, index) in filteredWatchHistory" :key="history.id" class="watch-history-item">
                 <div class="history-info">
                   <img :src="getImageUrl(history.anime?.image)" :alt="history.anime?.title" class="history-anime-image">
                   <div class="history-details">
@@ -164,10 +166,13 @@
           <!-- 我的收藏 -->
           <div v-if="activeTab === 'favorites' && !isViewingOtherUser">
             <h3>我的收藏</h3>
+            <div class="section-search">
+              <input type="text" v-model="favoritesSearch" placeholder="搜索动漫名称或类型..." class="search-input">
+            </div>
             <div v-if="favoritesLoading" class="loading">加载中...</div>
-            <div v-else-if="favorites.length === 0" class="no-history">暂无收藏</div>
+            <div v-else-if="filteredFavorites.length === 0" class="no-history">暂无收藏</div>
             <div v-else class="favorites-list">
-              <div v-for="(anime, index) in favorites" :key="anime.id" class="favorite-item">
+              <div v-for="(anime, index) in filteredFavorites" :key="anime.id" class="favorite-item">
                 <div class="favorite-info">
                   <img :src="getImageUrl(anime.image)" :alt="anime.title" class="favorite-anime-image">
                   <div class="favorite-details">
@@ -187,10 +192,13 @@
           <!-- 我的评分 -->
           <div v-if="activeTab === 'ratings' && !isViewingOtherUser">
             <h3>我的评分</h3>
+            <div class="section-search">
+              <input type="text" v-model="ratingsSearch" placeholder="搜索动漫名称或类型..." class="search-input">
+            </div>
             <div v-if="ratingsLoading" class="loading">加载中...</div>
-            <div v-else-if="ratings.length === 0" class="no-history">暂无评分</div>
+            <div v-else-if="filteredRatings.length === 0" class="no-history">暂无评分</div>
             <div v-else class="ratings-list">
-              <div v-for="(rating, index) in ratings" :key="rating.id" class="rating-item">
+              <div v-for="(rating, index) in filteredRatings" :key="rating.id" class="rating-item">
                 <div class="rating-info">
                   <img :src="getImageUrl(rating.anime?.image)" :alt="rating.anime?.title" class="rating-anime-image">
                   <div class="rating-details">
@@ -213,8 +221,11 @@
           <!-- 我的帖子 -->
           <div v-if="activeTab === 'my-posts' && !isViewingOtherUser">
             <h3>我的帖子</h3>
+            <div class="section-search">
+              <input type="text" v-model="myPostsSearch" placeholder="搜索帖子标题或内容..." class="search-input">
+            </div>
             <div v-if="myPostsLoading" class="loading">加载中...</div>
-            <div v-else-if="myPosts.length === 0" class="no-history">暂无发布的帖子</div>
+            <div v-else-if="filteredMyPosts.length === 0" class="no-history">暂无发布的帖子</div>
             <div v-else>
               <div class="my-posts-list">
                 <div v-for="post in pagedMyPosts" :key="post.id" class="my-post-item">
@@ -284,7 +295,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
 import { ElMessage, ElMessageBox } from 'element-plus';
@@ -333,10 +344,10 @@ const myPosts = ref<any[]>([]);
 const myPostsLoading = ref(false);
 const myPostsPage = ref(1);
 const myPostsPageSize = 6;
-const myPostsTotalPages = computed(() => Math.ceil(myPosts.value.length / myPostsPageSize));
+const myPostsTotalPages = computed(() => Math.ceil(filteredMyPosts.value.length / myPostsPageSize));
 const pagedMyPosts = computed(() => {
   const start = (myPostsPage.value - 1) * myPostsPageSize;
-  return myPosts.value.slice(start, start + myPostsPageSize);
+  return filteredMyPosts.value.slice(start, start + myPostsPageSize);
 });
 
 // 编辑帖子对话框
@@ -346,6 +357,12 @@ const editPostForm = ref({ id: 0, title: '', content: '' });
 // 排序相关
 const sortBy = ref('time');
 const sortOrder = ref('desc'); // desc: 最新优先, asc: 最早优先
+
+// 搜索关键词
+const watchHistorySearch = ref('');
+const favoritesSearch = ref('');
+const ratingsSearch = ref('');
+const myPostsSearch = ref('');
 
 const getRoleText = (role: string) => {
   return role === 'admin' || role === '1' ? '管理员' : '普通用户';
@@ -647,6 +664,50 @@ const sortedWatchHistory = computed(() => {
     }
     return 0;
   });
+});
+
+// 过滤后的观看记录
+const filteredWatchHistory = computed(() => {
+  if (!watchHistorySearch.value) return sortedWatchHistory.value;
+  const keyword = watchHistorySearch.value.toLowerCase();
+  return sortedWatchHistory.value.filter(item =>
+    item.anime?.title?.toLowerCase().includes(keyword)
+  );
+});
+
+// 过滤后的收藏
+const filteredFavorites = computed(() => {
+  if (!favoritesSearch.value) return favorites.value;
+  const keyword = favoritesSearch.value.toLowerCase();
+  return favorites.value.filter(item =>
+    item.title?.toLowerCase().includes(keyword) ||
+    item.genre?.toLowerCase().includes(keyword)
+  );
+});
+
+// 过滤后的评分
+const filteredRatings = computed(() => {
+  if (!ratingsSearch.value) return ratings.value;
+  const keyword = ratingsSearch.value.toLowerCase();
+  return ratings.value.filter(item =>
+    item.anime?.title?.toLowerCase().includes(keyword) ||
+    item.anime?.genre?.toLowerCase().includes(keyword)
+  );
+});
+
+// 过滤后的帖子
+const filteredMyPosts = computed(() => {
+  if (!myPostsSearch.value) return myPosts.value;
+  const keyword = myPostsSearch.value.toLowerCase();
+  return myPosts.value.filter(post =>
+    post.title?.toLowerCase().includes(keyword) ||
+    post.content?.toLowerCase().includes(keyword)
+  );
+});
+
+// 搜索时重置帖子分页
+watch(myPostsSearch, () => {
+  myPostsPage.value = 1;
 });
 
 const handleSave = async () => {
@@ -1126,8 +1187,39 @@ onMounted(async () => {
 .watch-history-controls {
   margin-bottom: 20px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 搜索框样式 */
+.section-search {
+  margin-bottom: 15px;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
+}
+
+.section-search .search-input {
+  max-width: 350px;
 }
 
 .sort-controls {

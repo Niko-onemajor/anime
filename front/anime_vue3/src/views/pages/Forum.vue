@@ -40,7 +40,7 @@
 
     <!-- 帖子列表 -->
     <div class="post-container">
-      <div class="post-item" v-for="post in sortedPosts" :key="post.id">
+      <div class="post-item" v-for="post in pagedPosts" :key="post.id">
         <div class="post-header">
           <div class="post-author">
             <img :src="getImageUrl(post.authorAvatar)" :alt="post.authorName" class="author-avatar" @click="goToUserProfile(post.authorName)" style="cursor: pointer;">
@@ -173,6 +173,15 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 分页导航 -->
+    <div class="pagination" v-if="totalPages > 1">
+      <button @click="changePage(1)" :disabled="currentPage === 1" class="page-btn">首页</button>
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="page-btn">上一页</button>
+      <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="page-btn">下一页</button>
+      <button @click="changePage(totalPages)" :disabled="currentPage === totalPages" class="page-btn">尾页</button>
     </div>
 
     <!-- 发布帖子对话框 -->
@@ -369,6 +378,7 @@ const sortOptions = [
 const sortOrder = ref('desc'); // desc: 降序, asc: 升序
 const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc';
+  currentPage.value = 1;
 };
 
 // 搜索相关
@@ -388,6 +398,7 @@ const searchPosts = async () => {
         dislikes: post.dislikes || [],
         comments: []
       }));
+      currentPage.value = 1;
     }
   } catch (error) {
     console.error('搜索帖子失败：', error);
@@ -474,6 +485,25 @@ interface Post {
 
 // 帖子数据
 const posts = ref<Post[]>([]);
+
+// 分页相关
+const currentPage = ref(1);
+const pageSize = 6;
+const totalPages = computed(() => Math.ceil(sortedPosts.value.length / pageSize));
+
+// 分页后的帖子列表
+const pagedPosts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  const end = start + pageSize;
+  return sortedPosts.value.slice(start, end);
+});
+
+// 切换页码
+const changePage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
 
 // 加载帖子列表
 const loadPosts = async () => {
@@ -609,6 +639,7 @@ const getSortedAndPagedComments = (postId: number) => {
 // 选择排序
 const selectSort = (sort: string) => {
   selectedSort.value = sort;
+  currentPage.value = 1;
 };
 
 // 发布帖子
@@ -1596,6 +1627,44 @@ onMounted(async () => {
 
 .sort-order-btn.small:hover {
   background: #ff5252;
+}
+
+/* 帖子分页导航 */
+.pagination {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  padding: 0 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination .page-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.pagination .page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.pagination .page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination .page-info {
+  font-size: 14px;
+  color: #666;
+  min-width: 80px;
+  text-align: center;
 }
 
 /* 评论分页 */

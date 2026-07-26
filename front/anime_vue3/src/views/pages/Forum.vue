@@ -188,7 +188,7 @@
                         <span class="comment-time">{{ formatTime(reply.createTime) }}</span>
                       </div>
                     </div>
-                    <div class="comment-content">{{ reply.content }}</div>
+                    <div class="comment-content"><span v-if="reply.replyToName" class="reply-to">@{{ reply.replyToName }}</span> {{ reply.content }}</div>
                     <div class="comment-actions">
                       <button @click="likeComment(reply)" class="action-btn like-btn small" :class="{ active: reply.likes?.includes(currentUser) }">👍 {{ reply.likeCount || 0 }}</button>
                       <button @click="dislikeComment(reply)" class="action-btn dislike-btn small" :class="{ active: reply.dislikes?.includes(currentUser) }">👎 {{ reply.dislikeCount || 0 }}</button>
@@ -514,6 +514,7 @@ const submitReply = async (postId: number, commentId: number) => {
         newReply.dislikes = [];
         newReply.likeCount = 0;
         newReply.dislikeCount = 0;
+        newReply.replyToName = res.data.data.replyToName || '';
         
         // 找到父评论并添加回复
         const parentComment = post.comments.find(c => c.id === commentId);
@@ -590,6 +591,7 @@ interface Comment {
   createTime: Date | string;
   authorName: string;
   authorAvatar: string;
+  replyToName?: string;
   likes?: string[];
   dislikes?: string[];
   likeCount?: number;
@@ -642,6 +644,14 @@ const loadPosts = async () => {
     // GET /api/post/list 直接返回帖子数组
     const postList = res.data;
     if (postList && Array.isArray(postList)) {
+      // 保存旧评论数据，避免点赞后评论区消失
+      const oldCommentsMap: Record<number, Comment[]> = {};
+      posts.value.forEach(p => {
+        if (p.comments && p.comments.length > 0) {
+          oldCommentsMap[p.id] = p.comments;
+        }
+      });
+      
       posts.value = postList.map((post: any) => ({
         ...post,
         authorName: post.author?.username || '未知用户',
@@ -649,7 +659,7 @@ const loadPosts = async () => {
         createTime: new Date(post.createTime),
         likes: post.likes || [],
         dislikes: post.dislikes || [],
-        comments: []
+        comments: oldCommentsMap[post.id] || []
       }));
       
       // 如果用户已登录，更新用户的互动状态
@@ -1938,6 +1948,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
 .comment-textarea {
@@ -2066,6 +2077,12 @@ onMounted(async () => {
 .reply-item .comment-content {
   font-size: 13px;
   margin-bottom: 6px;
+}
+
+.reply-to {
+  color: #ff6b6b;
+  font-weight: 500;
+  margin-right: 2px;
 }
 
 .reply-item .action-btn {

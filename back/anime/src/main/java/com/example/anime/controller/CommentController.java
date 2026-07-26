@@ -55,6 +55,9 @@ public class CommentController {
                 reply.setDislikeCount(replyDislikeCount);
                 
                 Map<String, Object> replyMap = buildCommentMap(reply);
+                // 添加被回复人用户名
+                User parentAuthor = userService.findById(comment.getAuthorId());
+                replyMap.put("replyToName", parentAuthor != null ? parentAuthor.getUsername() : "");
                 replyList.add(replyMap);
             }
             commentMap.put("replies", replyList);
@@ -121,6 +124,15 @@ public class CommentController {
         commentMap.put("parentId", comment.getParentId());
         commentMap.put("authorName", user.getUsername());
         commentMap.put("authorAvatar", user.getAvatar());
+        
+        // 如果是回复，添加被回复人用户名
+        if (parentId != null) {
+            Comment parentComment = commentService.findById(parentId);
+            if (parentComment != null) {
+                User parentAuthor = userService.findById(parentComment.getAuthorId());
+                commentMap.put("replyToName", parentAuthor != null ? parentAuthor.getUsername() : "");
+            }
+        }
 
         response.put("code", 200);
         response.put("msg", parentId != null ? "回复添加成功" : "评论添加成功");

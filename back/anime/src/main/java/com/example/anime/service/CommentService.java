@@ -47,6 +47,11 @@ public class CommentService {
         return commentRepository.findByParentId(parentId);
     }
 
+    // 根据ID查找评论
+    public Comment findById(Long id) {
+        return commentRepository.findById(id).orElse(null);
+    }
+
     // 根据帖子ID获取评论列表
     public List<Comment> getCommentsByPostId(Long postId) {
         return commentRepository.findByPostId(postId);

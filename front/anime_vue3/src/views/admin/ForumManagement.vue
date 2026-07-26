@@ -40,7 +40,7 @@
 
       <!-- 帖子列表 -->
       <div class="post-list">
-        <div v-for="post in posts" :key="post.id" class="post-item">
+        <div v-for="post in pagedPosts" :key="post.id" class="post-item">
           <div class="post-header">
             <img :src="getImageUrl(post.authorAvatar)" :alt="post.authorName" class="author-avatar">
             <span class="post-author">作者：{{ post.authorName }}</span>
@@ -103,6 +103,22 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 分页导航 -->
+      <div class="pagination" v-if="postTotalPages > 1">
+        <button @click="postPage = 1" :disabled="postPage === 1" class="page-btn">首页</button>
+        <button @click="postPage = postPage - 1" :disabled="postPage === 1" class="page-btn">上一页</button>
+        <span 
+          v-for="p in postPageNumbers" 
+          :key="p" 
+          class="page-num" 
+          :class="{ active: p === postPage }"
+          @click="postPage = p"
+        >{{ p }}</span>
+        <button @click="postPage = postPage + 1" :disabled="postPage === postTotalPages" class="page-btn">下一页</button>
+        <button @click="postPage = postTotalPages" :disabled="postPage === postTotalPages" class="page-btn">尾页</button>
+        <span class="page-total">共 {{ postTotalPages }} 页 / {{ posts.length }} 条</span>
       </div>
 
       <!-- 编辑帖子对话框 -->
@@ -206,6 +222,32 @@ const sortDirection = ref('desc');
 // 帖子列表
 const posts = ref<any[]>([]);
 
+// 分页
+const postPage = ref(1);
+const postPageSize = 6;
+const postTotalPages = computed(() => Math.ceil(posts.value.length / postPageSize) || 1);
+const pagedPosts = computed(() => {
+  const start = (postPage.value - 1) * postPageSize;
+  return posts.value.slice(start, start + postPageSize);
+});
+const postPageNumbers = computed(() => {
+  const total = postTotalPages.value;
+  const curr = postPage.value;
+  const pages: number[] = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (curr > 3) pages.push(-1);
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (curr < total - 2) pages.push(-1);
+    pages.push(total);
+  }
+  return pages;
+});
+
 // 显示评论状态
 const showComments = ref<Record<number, boolean>>({});
 // 评论排序选项
@@ -252,6 +294,7 @@ const loadPosts = async () => {
             authorName: post.author?.username || '未知用户',
             authorAvatar: post.author?.avatar || ''
           }));
+          postPage.value = 1;
         }
   } catch (error) {
     console.error('加载帖子列表失败：', error);
@@ -270,6 +313,7 @@ const searchPosts = async () => {
             authorName: post.author?.username || '未知用户',
             authorAvatar: post.author?.avatar || ''
           }));
+          postPage.value = 1;
         }
   } catch (error) {
     console.error('搜索帖子失败：', error);
@@ -295,6 +339,7 @@ const sortPosts = async () => {
             authorName: post.author?.username || '未知用户',
             authorAvatar: post.author?.avatar || ''
           }));
+          postPage.value = 1;
         }
   } catch (error) {
     console.error('排序帖子失败：', error);
@@ -1173,6 +1218,60 @@ onUnmounted(() => {
   .dialog-content {
     width: 95%;
   }
+}
+
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.page-btn {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-num {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.page-num:hover {
+  background: #f0f0f0;
+}
+
+.page-num.active {
+  background: #ff6b6b;
+  color: white;
+}
+
+.page-total {
+  font-size: 13px;
+  color: #999;
+  margin-left: 8px;
 }
 
 /* 版权信息样式 */

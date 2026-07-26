@@ -30,7 +30,7 @@
       <!-- 动漫列表 -->
       <div class="anime-list">
         <div class="anime-grid">
-          <div v-for="anime in animes" :key="anime.id" class="anime-item">
+          <div v-for="anime in pagedAnimes" :key="anime.id" class="anime-item">
             <div class="anime-image">
               <img :src="getImageUrl(anime.image)" :alt="anime.title" class="anime-poster">
               <div class="anime-status" :class="{ 'active': anime.status === 1 }">
@@ -52,6 +52,22 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 分页导航 -->
+      <div class="pagination" v-if="animeTotalPages > 1">
+        <button @click="animePage = 1" :disabled="animePage === 1" class="page-btn">首页</button>
+        <button @click="animePage = animePage - 1" :disabled="animePage === 1" class="page-btn">上一页</button>
+        <span 
+          v-for="p in animePageNumbers" 
+          :key="p" 
+          class="page-num" 
+          :class="{ active: p === animePage }"
+          @click="animePage = p"
+        >{{ p }}</span>
+        <button @click="animePage = animePage + 1" :disabled="animePage === animeTotalPages" class="page-btn">下一页</button>
+        <button @click="animePage = animeTotalPages" :disabled="animePage === animeTotalPages" class="page-btn">尾页</button>
+        <span class="page-total">共 {{ animeTotalPages }} 页 / {{ animes.length }} 条</span>
       </div>
 
       <!-- 添加/编辑动漫对话框 -->
@@ -204,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/utils/api';
 import { ElMessageBox, ElMessage, ElDialog } from 'element-plus';
 
@@ -296,6 +312,32 @@ const searchKeyword = ref('');
 // 动漫列表
 const animes = ref<any[]>([]);
 
+// 分页
+const animePage = ref(1);
+const animePageSize = 8;
+const animeTotalPages = computed(() => Math.ceil(animes.value.length / animePageSize) || 1);
+const pagedAnimes = computed(() => {
+  const start = (animePage.value - 1) * animePageSize;
+  return animes.value.slice(start, start + animePageSize);
+});
+const animePageNumbers = computed(() => {
+  const total = animeTotalPages.value;
+  const curr = animePage.value;
+  const pages: number[] = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (curr > 3) pages.push(-1);
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (curr < total - 2) pages.push(-1);
+    pages.push(total);
+  }
+  return pages;
+});
+
 // 对话框状态
 const showAddAnimeDialog = ref(false);
 const showEditAnimeDialog = ref(false);
@@ -341,6 +383,7 @@ const searchAnimes = async () => {
     });
     if (res.data.code === 200) {
       animes.value = res.data.data;
+      animePage.value = 1;
     }
   } catch (error) {
     console.error('搜索动漫失败：', error);
@@ -1401,6 +1444,60 @@ onMounted(() => {
 
 .reply-stats {
   color: #666;
+}
+
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.page-btn {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-num {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.page-num:hover {
+  background: #f0f0f0;
+}
+
+.page-num.active {
+  background: #ff6b6b;
+  color: white;
+}
+
+.page-total {
+  font-size: 13px;
+  color: #999;
+  margin-left: 8px;
 }
 
 /* 响应式设计 */

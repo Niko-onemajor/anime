@@ -44,7 +44,7 @@
 
       <div class="deleted-records">
         <div class="record-cards" v-if="records.length > 0">
-          <div v-for="record in records" :key="record.id" class="record-card">
+          <div v-for="record in pagedRecords" :key="record.id" class="record-card">
             <div class="record-card-header">
               <div class="record-card-title">
                 <div v-if="activeTab === 'users' && record.avatar" class="record-card-image user-avatar">
@@ -81,6 +81,22 @@
           <p>暂无删除记录</p>
         </div>
       </div>
+
+      <!-- 分页导航 -->
+      <div class="pagination" v-if="recordTotalPages > 1">
+        <button @click="recordPage = 1" :disabled="recordPage === 1" class="page-btn">首页</button>
+        <button @click="recordPage = recordPage - 1" :disabled="recordPage === 1" class="page-btn">上一页</button>
+        <span 
+          v-for="p in recordPageNumbers" 
+          :key="p" 
+          class="page-num" 
+          :class="{ active: p === recordPage }"
+          @click="recordPage = p"
+        >{{ p }}</span>
+        <button @click="recordPage = recordPage + 1" :disabled="recordPage === recordTotalPages" class="page-btn">下一页</button>
+        <button @click="recordPage = recordTotalPages" :disabled="recordPage === recordTotalPages" class="page-btn">尾页</button>
+        <span class="page-total">共 {{ recordTotalPages }} 页 / {{ records.length }} 条</span>
+      </div>
     </div>
 
     <!-- 版权信息 -->
@@ -93,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/utils/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
@@ -137,6 +153,33 @@ const getImageUrl = (url: string | undefined | null): string => {
 
 const activeTab = ref('users');
 const records = ref<any[]>([]);
+
+// 分页
+const recordPage = ref(1);
+const recordPageSize = 6;
+const recordTotalPages = computed(() => Math.ceil(records.value.length / recordPageSize) || 1);
+const pagedRecords = computed(() => {
+  const start = (recordPage.value - 1) * recordPageSize;
+  return records.value.slice(start, start + recordPageSize);
+});
+const recordPageNumbers = computed(() => {
+  const total = recordTotalPages.value;
+  const curr = recordPage.value;
+  const pages: number[] = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (curr > 3) pages.push(-1);
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (curr < total - 2) pages.push(-1);
+    pages.push(total);
+  }
+  return pages;
+});
+
 const searchKeyword = ref('');
 const sortBy = ref('newest');
 
@@ -191,6 +234,7 @@ const loadDeletedRecords = async () => {
       });
       
       records.value = data;
+      recordPage.value = 1;
     }
   } catch (error) {
     console.error('加载删除记录失败：', error);
@@ -601,6 +645,60 @@ onMounted(() => {
   padding: 60px 20px;
   color: #999;
   font-size: 18px;
+}
+
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.page-btn {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-num {
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.page-num:hover {
+  background: #f0f0f0;
+}
+
+.page-num.active {
+  background: #ff6b6b;
+  color: white;
+}
+
+.page-total {
+  font-size: 13px;
+  color: #999;
+  margin-left: 8px;
 }
 
 @media (max-width: 768px) {

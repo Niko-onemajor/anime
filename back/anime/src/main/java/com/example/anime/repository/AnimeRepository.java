@@ -22,7 +22,7 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> {
     List<Anime> findByLetterAndDeletedFalse(String letter);
     
     // 根据关键字搜索
-    @Query("SELECT a FROM Anime a WHERE (a.title LIKE %:keyword% OR a.description LIKE %:keyword% OR a.genre LIKE %:keyword%) AND a.deleted = false")
+    @Query("SELECT a FROM Anime a WHERE a.title LIKE %:keyword% AND a.deleted = false")
     List<Anime> searchByKeyword(@Param("keyword") String keyword);
     
     // 按评分排序

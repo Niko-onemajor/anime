@@ -21,7 +21,7 @@
       <!-- 搜索和排序 -->
       <div class="actions">
         <div class="search-box">
-          <input type="text" v-model="searchKeyword" placeholder="搜索帖子标题..." class="search-input">
+          <input type="text" v-model="searchKeyword" placeholder="搜索帖子标题或内容..." class="search-input">
           <button @click="searchPosts" class="search-btn">搜索</button>
         </div>
         <div class="sort-box">

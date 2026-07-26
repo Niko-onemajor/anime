@@ -260,6 +260,17 @@ public class PostService {
         return posts;
     }
 
+    // 根据标题或内容搜索帖子（用于管理员）
+    public List<Post> searchByKeyword(String keyword) {
+        List<Post> posts = postRepository.searchByKeyword(keyword);
+        posts.forEach(post -> {
+            int commentCount = commentService.getCommentCountByPostId(post.getId());
+            post.setCommentCount(commentCount);
+            updatePostInteractionCounts(post);
+        });
+        return posts;
+    }
+
     // 根据ID删除帖子（用于管理员）
     public void deleteById(Long id) {
         // 先删除帖子的所有评论

@@ -662,7 +662,7 @@ public class AdminController {
         Map<String, Object> response = new HashMap<>();
         try {
             String keyword = request.get("keyword");
-            List<Post> posts = postService.findByTitleContaining(keyword);
+            List<Post> posts = postService.searchByKeyword(keyword);
             response.put("code", 200);
             response.put("data", posts);
         } catch (Exception e) {

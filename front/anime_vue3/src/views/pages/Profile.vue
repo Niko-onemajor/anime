@@ -27,6 +27,7 @@
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'watch-history' }" @click.prevent="switchTab('watch-history')">观看记录</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'favorites' }" @click.prevent="switchTab('favorites')">我的收藏</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'ratings' }" @click.prevent="switchTab('ratings')">我的评分</a></li>
+            <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-posts' }" @click.prevent="switchTab('my-posts')">我的帖子</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" @click.prevent="handleLogout">退出登录</a></li>
           </ul>
         </div>
@@ -208,7 +209,68 @@
               </div>
             </div>
           </div>
+          
+          <!-- 我的帖子 -->
+          <div v-if="activeTab === 'my-posts' && !isViewingOtherUser">
+            <h3>我的帖子</h3>
+            <div v-if="myPostsLoading" class="loading">加载中...</div>
+            <div v-else-if="myPosts.length === 0" class="no-history">暂无发布的帖子</div>
+            <div v-else>
+              <div class="my-posts-list">
+                <div v-for="post in pagedMyPosts" :key="post.id" class="my-post-item">
+                  <div class="my-post-header">
+                    <h4 class="my-post-title">{{ post.title }}</h4>
+                    <span class="my-post-time">{{ formatTime(post.createTime) }}</span>
+                  </div>
+                  <p class="my-post-content">{{ post.content }}</p>
+                  <div class="my-post-footer">
+                    <div class="my-post-stats">
+                      <span>👍 {{ post.likeCount || 0 }}</span>
+                      <span>👎 {{ post.dislikeCount || 0 }}</span>
+                      <span>💬 {{ post.commentCount || 0 }}</span>
+                    </div>
+                    <div class="my-post-actions">
+                      <button class="btn btn-sm btn-primary" @click="openEditMyPost(post)">编辑</button>
+                      <button class="btn btn-sm btn-danger" @click="deleteMyPost(post.id)">删除</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- 分页 -->
+              <div class="my-posts-pagination" v-if="myPostsTotalPages > 1">
+                <button @click="myPostsPage = 1" :disabled="myPostsPage === 1" class="page-btn">首页</button>
+                <button @click="myPostsPage = myPostsPage - 1" :disabled="myPostsPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ myPostsPage }} / {{ myPostsTotalPages }}</span>
+                <button @click="myPostsPage = myPostsPage + 1" :disabled="myPostsPage === myPostsTotalPages" class="page-btn">下一页</button>
+                <button @click="myPostsPage = myPostsTotalPages" :disabled="myPostsPage === myPostsTotalPages" class="page-btn">尾页</button>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑帖子对话框 -->
+  <div class="dialog-overlay" v-if="showEditMyPostDialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h3>编辑帖子</h3>
+        <button @click="showEditMyPostDialog = false" class="close-btn">×</button>
+      </div>
+      <div class="dialog-body">
+        <div class="form-group">
+          <label for="edit-post-title">标题</label>
+          <input type="text" id="edit-post-title" v-model="editPostForm.title" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="edit-post-content">内容</label>
+          <textarea id="edit-post-content" v-model="editPostForm.content" class="form-textarea" rows="5"></textarea>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button @click="showEditMyPostDialog = false" class="btn cancel-btn">取消</button>
+        <button @click="submitEditMyPost" class="btn submit-btn">保存</button>
       </div>
     </div>
   </div>
@@ -265,6 +327,22 @@ const favoritesLoading = ref(false);
 const ratings = ref<any[]>([]);
 const ratingsLoading = ref(false);
 
+// 我的帖子相关
+const userId = ref<number | null>(null);
+const myPosts = ref<any[]>([]);
+const myPostsLoading = ref(false);
+const myPostsPage = ref(1);
+const myPostsPageSize = 6;
+const myPostsTotalPages = computed(() => Math.ceil(myPosts.value.length / myPostsPageSize));
+const pagedMyPosts = computed(() => {
+  const start = (myPostsPage.value - 1) * myPostsPageSize;
+  return myPosts.value.slice(start, start + myPostsPageSize);
+});
+
+// 编辑帖子对话框
+const showEditMyPostDialog = ref(false);
+const editPostForm = ref({ id: 0, title: '', content: '' });
+
 // 排序相关
 const sortBy = ref('time');
 const sortOrder = ref('desc'); // desc: 最新优先, asc: 最早优先
@@ -284,6 +362,9 @@ const switchTab = (tab: string) => {
   }
   if (tab === 'ratings' && !isViewingOtherUser) {
     loadRatings();
+  }
+  if (tab === 'my-posts' && !isViewingOtherUser) {
+    loadMyPosts();
   }
 };
 
@@ -443,6 +524,96 @@ const loadRatings = async () => {
     ElMessage.error('加载评分列表失败');
   } finally {
     ratingsLoading.value = false;
+  }
+};
+
+// 加载我的帖子
+const loadMyPosts = async () => {
+  if (!userId.value) {
+    // 从后端获取用户ID
+    try {
+      const res = await axios.post('http://localhost:8080/api/user/profile', {
+        username: username.value
+      });
+      if (res.data.code === 200 && res.data.data.id) {
+        userId.value = res.data.data.id;
+      } else {
+        ElMessage.error('获取用户信息失败');
+        return;
+      }
+    } catch (error) {
+      console.error('获取用户ID失败:', error);
+      ElMessage.error('获取用户信息失败');
+      return;
+    }
+  }
+  myPostsLoading.value = true;
+  myPostsPage.value = 1;
+  try {
+    const res = await axios.get(`http://localhost:8080/api/post/author/${userId.value}`);
+    if (res.data && Array.isArray(res.data)) {
+      myPosts.value = res.data.map((post: any) => ({
+        ...post,
+        createTime: new Date(post.createTime)
+      }));
+    }
+  } catch (error) {
+    console.error('加载我的帖子失败:', error);
+    ElMessage.error('加载帖子失败');
+  } finally {
+    myPostsLoading.value = false;
+  }
+};
+
+// 打开编辑帖子对话框
+const openEditMyPost = (post: any) => {
+  editPostForm.value = {
+    id: post.id,
+    title: post.title,
+    content: post.content
+  };
+  showEditMyPostDialog.value = true;
+};
+
+// 提交编辑帖子
+const submitEditMyPost = async () => {
+  if (!editPostForm.value.title || !editPostForm.value.content) {
+    ElMessage.warning('请填写标题和内容');
+    return;
+  }
+  try {
+    const res = await axios.post('http://localhost:8080/api/post/update', {
+      id: editPostForm.value.id,
+      title: editPostForm.value.title,
+      content: editPostForm.value.content
+    });
+    if (res.data) {
+      ElMessage.success('帖子编辑成功');
+      showEditMyPostDialog.value = false;
+      loadMyPosts();
+    }
+  } catch (error) {
+    console.error('编辑帖子失败:', error);
+    ElMessage.error('编辑帖子失败');
+  }
+};
+
+// 删除我的帖子
+const deleteMyPost = async (postId: number) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这篇帖子吗？', '删除确认', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    await axios.delete(`http://localhost:8080/api/post/delete/${postId}`);
+    ElMessage.success('帖子删除成功');
+    loadMyPosts();
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除帖子失败:', error);
+      ElMessage.error('删除帖子失败');
+    }
   }
 };
 
@@ -666,6 +837,7 @@ onMounted(async () => {
     
     if (res.data && res.data.code === 200) {
             const userData = res.data.data;
+            userId.value = userData.id;
             username.value = userData.username;
             // 确保 role 的值正确设置
             role.value = userData.role.toString();
@@ -1288,6 +1460,230 @@ onMounted(async () => {
     width: 100%;
     justify-content: flex-start;
   }
+}
+
+/* 我的帖子样式 */
+.my-posts-list {
+  margin-top: 20px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.my-post-item {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.3s;
+}
+
+.my-post-item:hover {
+  background-color: #f9f9f9;
+}
+
+.my-post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.my-post-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+.my-post-time {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.my-post-content {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.my-post-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.my-post-stats {
+  display: flex;
+  gap: 15px;
+  font-size: 13px;
+  color: #999;
+}
+
+.my-post-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+/* 帖子分页 */
+.my-posts-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+.my-posts-pagination .page-btn {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.my-posts-pagination .page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.my-posts-pagination .page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-posts-pagination .page-info {
+  font-size: 13px;
+  color: #666;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* 编辑帖子对话框样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.dialog-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.3s;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.dialog-body {
+  padding: 20px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+  border-top: 1px solid #eee;
+}
+
+.cancel-btn {
+  background: #f0f0f0;
+  color: #333;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.cancel-btn:hover {
+  background: #e0e0e0;
+}
+
+.submit-btn {
+  background: #ff6b6b;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.submit-btn:hover {
+  background: #ff5252;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
 }
 
 /* 版权信息样式 */

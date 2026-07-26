@@ -51,6 +51,28 @@ public class PostController {
         return postService.getPostsByAuthorId(authorId);
     }
 
+    // 根据用户名获取帖子
+    @PostMapping("/my-posts")
+    public Map<String, Object> getMyPosts(@RequestBody Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String username = request.get("username");
+            User user = userService.findByUsername(username);
+            if (user == null) {
+                response.put("code", 400);
+                response.put("msg", "用户不存在");
+                return response;
+            }
+            List<Post> posts = postService.getPostsByAuthorId(user.getId());
+            response.put("code", 200);
+            response.put("data", posts);
+        } catch (Exception e) {
+            response.put("code", 500);
+            response.put("msg", "获取帖子失败");
+        }
+        return response;
+    }
+
     // 按时间排序获取帖子
     @GetMapping("/sort/time")
     public List<Post> getPostsByTime() {

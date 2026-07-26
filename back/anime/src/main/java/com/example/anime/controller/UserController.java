@@ -167,6 +167,7 @@ public class UserController {
             response.put("code", 200);
             response.put("msg", "获取成功");
             Map<String, Object> data = new HashMap<>();
+            data.put("id", user.getId());
             data.put("username", user.getUsername());
             data.put("role", user.getRole());
             data.put("email", user.getEmail());

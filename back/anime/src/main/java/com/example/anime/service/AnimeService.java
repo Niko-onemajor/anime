@@ -249,6 +249,25 @@ public class AnimeService {
         return animeRepository.findByDeletedFalse();
     }
 
+    // 获取所有动漫并填充实际观看次数（用于管理员）
+    public List<Anime> findAllWithViewCounts() {
+        List<Anime> animes = animeRepository.findByDeletedFalse();
+        populateViewCounts(animes);
+        return animes;
+    }
+
+    // 为动漫列表填充实际观看次数
+    public void populateViewCounts(List<Anime> animes) {
+        List<WatchHistory> watchHistories = watchHistoryRepository.findAll();
+        Map<Long, Integer> viewCountMap = new HashMap<>();
+        for (WatchHistory history : watchHistories) {
+            viewCountMap.put(history.getAnimeId(), viewCountMap.getOrDefault(history.getAnimeId(), 0) + 1);
+        }
+        for (Anime anime : animes) {
+            anime.setViewCount(viewCountMap.getOrDefault(anime.getId(), 0));
+        }
+    }
+
     // 根据标题搜索动漫（用于管理员，非删除）
     public List<Anime> findByTitleContaining(String keyword) {
         return animeRepository.searchByKeyword(keyword);

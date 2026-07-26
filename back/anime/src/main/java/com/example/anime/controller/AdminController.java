@@ -10,6 +10,7 @@ import com.example.anime.service.AnimeService;
 import com.example.anime.service.PostService;
 import com.example.anime.service.CommentService;
 import com.example.anime.service.EpisodeService;
+import com.example.anime.repository.WatchHistoryRepository;
 import com.example.anime.handler.CommentWebSocketHandler;
 import com.example.anime.utils.OSSUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +45,9 @@ public class AdminController {
     
     @Autowired
     private CommentWebSocketHandler commentWebSocketHandler;
+
+    @Autowired
+    private WatchHistoryRepository watchHistoryRepository;
 
     // 用户管理 API
     @PostMapping("/users")
@@ -327,7 +331,7 @@ public class AdminController {
     public Map<String, Object> getAnimes() {
         Map<String, Object> response = new HashMap<>();
         try {
-            List<Anime> animes = animeService.findAll();
+            List<Anime> animes = animeService.findAllWithViewCounts();
             response.put("code", 200);
             response.put("data", animes);
         } catch (Exception e) {
@@ -343,6 +347,7 @@ public class AdminController {
         try {
             String keyword = request.get("keyword");
             List<Anime> animes = animeService.findByTitleContaining(keyword);
+            animeService.populateViewCounts(animes);
             response.put("code", 200);
             response.put("data", animes);
         } catch (Exception e) {

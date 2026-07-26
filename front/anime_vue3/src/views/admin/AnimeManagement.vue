@@ -24,6 +24,21 @@
           <input type="text" v-model="searchKeyword" placeholder="搜索动漫标题..." class="search-input">
           <button @click="searchAnimes" class="search-btn">搜索</button>
         </div>
+        <div class="sort-box">
+          <label>排序方式：</label>
+          <span 
+            v-for="sort in animeSortOptions" 
+            :key="sort.value" 
+            class="sort-option" 
+            :class="{ active: animeSortBy === sort.value }"
+            @click="selectAnimeSort(sort.value)"
+          >
+            {{ sort.label }}
+          </span>
+          <button @click="toggleAnimeSortDirection" class="sort-direction-btn">
+            {{ animeSortDirection === 'desc' ? '降序' : '升序' }}
+          </button>
+        </div>
         <button @click="handleAddAnime" class="add-btn">添加动漫</button>
       </div>
 
@@ -38,9 +53,14 @@
               </div>
             </div>
             <div class="anime-info">
-              <h3 class="anime-title">{{ anime.title }}</h3>
-              <p class="anime-year">{{ anime.year }}</p>
-              <p class="anime-rating">评分: {{ anime.rating }}</p>
+              <div class="anime-title-row">
+                <h3 class="anime-title">{{ anime.title }}</h3>
+                <span class="anime-year">{{ anime.year }}</span>
+              </div>
+              <div class="anime-meta-row">
+                <span class="anime-rating">评分: {{ anime.rating }}</span>
+                <span class="anime-views">观看: {{ anime.viewCount || 0 }}</span>
+              </div>
               <div class="anime-actions">
                 <button @click="toggleStatus(anime)" class="status-btn">
                   {{ anime.status === 1 ? '下架' : '上架' }}
@@ -332,13 +352,47 @@ const searchKeyword = ref('');
 // 动漫列表
 const animes = ref<any[]>([]);
 
+// 排序
+const animeSortBy = ref('year');
+const animeSortDirection = ref('desc');
+const animeSortOptions = [
+  { label: '年份', value: 'year' },
+  { label: '评分', value: 'rating' },
+  { label: '热度', value: 'views' }
+];
+
+const selectAnimeSort = (sortBy: string) => {
+  animeSortBy.value = sortBy;
+  animePage.value = 1;
+};
+
+const toggleAnimeSortDirection = () => {
+  animeSortDirection.value = animeSortDirection.value === 'desc' ? 'asc' : 'desc';
+  animePage.value = 1;
+};
+
+const sortedAnimes = computed(() => {
+  const list = [...animes.value];
+  const dir = animeSortDirection.value === 'desc' ? -1 : 1;
+  switch (animeSortBy.value) {
+    case 'year':
+      return list.sort((a, b) => dir * ((a.year || 0) - (b.year || 0)));
+    case 'rating':
+      return list.sort((a, b) => dir * ((a.rating || 0) - (b.rating || 0)));
+    case 'views':
+      return list.sort((a, b) => dir * ((a.viewCount || 0) - (b.viewCount || 0)));
+    default:
+      return list;
+  }
+});
+
 // 分页
 const animePage = ref(1);
 const animePageSize = 8;
-const animeTotalPages = computed(() => Math.ceil(animes.value.length / animePageSize) || 1);
+const animeTotalPages = computed(() => Math.ceil(sortedAnimes.value.length / animePageSize) || 1);
 const pagedAnimes = computed(() => {
   const start = (animePage.value - 1) * animePageSize;
-  return animes.value.slice(start, start + animePageSize);
+  return sortedAnimes.value.slice(start, start + animePageSize);
 });
 const animePageNumbers = computed(() => {
   const total = animeTotalPages.value;
@@ -945,6 +999,53 @@ onMounted(() => {
   background: #ff5252;
 }
 
+.sort-box {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sort-box label {
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+.sort-option {
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 16px;
+  font-size: 13px;
+  transition: all 0.3s;
+  background: #f0f0f0;
+  color: #666;
+}
+
+.sort-option:hover {
+  background: #e0e0e0;
+}
+
+.sort-option.active {
+  background: #ff6b6b;
+  color: white;
+}
+
+.sort-direction-btn {
+  padding: 6px 14px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.3s;
+}
+
+.sort-direction-btn:hover {
+  background: #45a049;
+}
+
 .add-btn {
   padding: 8px 16px;
   background: #4CAF50;
@@ -1021,23 +1122,47 @@ onMounted(() => {
   padding: 15px;
 }
 
+.anime-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 8px 0;
+}
+
 .anime-title {
-  margin: 0 0 10px 0;
+  margin: 0;
   font-size: 16px;
   font-weight: bold;
   color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .anime-year {
-  margin: 0 0 5px 0;
+  margin: 0;
+  font-size: 13px;
+  color: #999;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.anime-rating {
   font-size: 14px;
   color: #666;
 }
 
-.anime-rating {
-  margin: 0 0 15px 0;
+.anime-views {
   font-size: 14px;
   color: #666;
+}
+
+.anime-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 15px 0;
 }
 
 .anime-actions {

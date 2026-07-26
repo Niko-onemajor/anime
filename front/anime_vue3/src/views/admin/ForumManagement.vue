@@ -1257,6 +1257,8 @@ onUnmounted(() => {
   border-radius: 4px;
   font-size: 13px;
   transition: all 0.3s;
+  border: 1px solid #ddd;
+  background: white;
 }
 
 .page-num:hover {

@@ -157,11 +157,15 @@
         :close-on-click-modal="false"
       >
         <div class="dialog-body">
-          <div v-if="comments.length === 0" class="no-comments">
-            <p>暂无评论</p>
+          <!-- 搜索框 -->
+          <div class="comment-search-box" v-if="comments.length > 0">
+            <input type="text" v-model="commentSearchKeyword" placeholder="搜索评论内容或用户名..." class="search-input" @input="commentPage = 1">
+          </div>
+          <div v-if="filteredComments.length === 0" class="no-comments">
+            <p>{{ comments.length === 0 ? '暂无评论' : '未找到匹配的评论' }}</p>
           </div>
           <div v-else class="comments-list">
-            <div v-for="comment in comments" :key="comment.id" class="comment-item">
+            <div v-for="comment in pagedComments" :key="comment.id" class="comment-item">
               <div class="comment-header">
                 <div class="comment-author">
                   <img :src="getImageUrl(comment.author?.avatar)" :alt="comment.author?.username" class="author-avatar">
@@ -200,6 +204,22 @@
                 </div>
               </div>
             </div>
+          </div>
+          
+          <!-- 评论分页 -->
+          <div class="comment-pagination" v-if="commentTotalPages > 1">
+            <button @click="commentPage = 1" :disabled="commentPage === 1" class="page-btn">首页</button>
+            <button @click="commentPage = commentPage - 1" :disabled="commentPage === 1" class="page-btn">上一页</button>
+            <span 
+              v-for="p in commentPageNumbers" 
+              :key="p" 
+              class="page-num" 
+              :class="{ active: p === commentPage }"
+              @click="commentPage = p"
+            >{{ p }}</span>
+            <button @click="commentPage = commentPage + 1" :disabled="commentPage === commentTotalPages" class="page-btn">下一页</button>
+            <button @click="commentPage = commentTotalPages" :disabled="commentPage === commentTotalPages" class="page-btn">尾页</button>
+            <span class="page-total">共 {{ commentTotalPages }} 页 / {{ filteredComments.length }} 条</span>
           </div>
         </div>
         <template #footer>
@@ -745,7 +765,44 @@ const closeCommentManagementDialog = () => {
   showCommentManagementDialog.value = false;
   currentAnime.value = null;
   comments.value = [];
+  commentSearchKeyword.value = '';
+  commentPage.value = 1;
 };
+
+// 评论搜索和分页
+const commentSearchKeyword = ref('');
+const commentPage = ref(1);
+const commentPageSize = 5;
+const filteredComments = computed(() => {
+  if (!commentSearchKeyword.value) return comments.value;
+  const keyword = commentSearchKeyword.value.toLowerCase();
+  return comments.value.filter(comment => 
+    (comment.content && comment.content.toLowerCase().includes(keyword)) || 
+    (comment.author?.username && comment.author.username.toLowerCase().includes(keyword))
+  );
+});
+const commentTotalPages = computed(() => Math.ceil(filteredComments.value.length / commentPageSize) || 1);
+const pagedComments = computed(() => {
+  const start = (commentPage.value - 1) * commentPageSize;
+  return filteredComments.value.slice(start, start + commentPageSize);
+});
+const commentPageNumbers = computed(() => {
+  const total = commentTotalPages.value;
+  const curr = commentPage.value;
+  const pages: number[] = [];
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (curr > 3) pages.push(-1);
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (curr < total - 2) pages.push(-1);
+    pages.push(total);
+  }
+  return pages;
+});
 
 // 格式化日期
 const formatDate = (dateString: string) => {
@@ -1446,6 +1503,27 @@ onMounted(() => {
   color: #666;
 }
 
+/* 评论搜索框 */
+.comment-search-box {
+  margin-bottom: 16px;
+}
+
+.comment-search-box .search-input {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* 评论分页 */
+.comment-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
 /* 分页样式 */
 .pagination {
   display: flex;
@@ -1483,6 +1561,8 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 13px;
   transition: all 0.3s;
+  border: 1px solid #ddd;
+  background: white;
 }
 
 .page-num:hover {

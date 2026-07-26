@@ -776,10 +776,19 @@ const commentPageSize = 5;
 const filteredComments = computed(() => {
   if (!commentSearchKeyword.value) return comments.value;
   const keyword = commentSearchKeyword.value.toLowerCase();
-  return comments.value.filter(comment => 
-    (comment.content && comment.content.toLowerCase().includes(keyword)) || 
-    (comment.author?.username && comment.author.username.toLowerCase().includes(keyword))
-  );
+  return comments.value.filter(comment => {
+    // 搜索顶级评论
+    if (comment.content && comment.content.toLowerCase().includes(keyword)) return true;
+    if (comment.author?.username && comment.author.username.toLowerCase().includes(keyword)) return true;
+    // 搜索回复
+    if (comment.replies && comment.replies.length > 0) {
+      return comment.replies.some((reply: any) =>
+        (reply.content && reply.content.toLowerCase().includes(keyword)) ||
+        (reply.author?.username && reply.author.username.toLowerCase().includes(keyword))
+      );
+    }
+    return false;
+  });
 });
 const commentTotalPages = computed(() => Math.ceil(filteredComments.value.length / commentPageSize) || 1);
 const pagedComments = computed(() => {

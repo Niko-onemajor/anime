@@ -163,11 +163,39 @@
                 </div>
                 <div class="comment-content">{{ comment.content }}</div>
                 <div class="comment-actions">
-                <button @click="likeComment(comment)" class="action-btn like-btn small" :class="{ active: comment.likes?.includes(currentUser) }">👍 {{ comment.likeCount || 0 }}</button>
-                <button @click="dislikeComment(comment)" class="action-btn dislike-btn small" :class="{ active: comment.dislikes?.includes(currentUser) }">👎 {{ comment.dislikeCount || 0 }}</button>
-                <!-- 评论操作按钮（仅作者可见） -->
-                <button v-if="comment.authorName === currentUser" @click="deleteComment(post.id, comment.id)" class="action-btn delete-btn small">删除</button>
-              </div>
+                  <button @click="likeComment(comment)" class="action-btn like-btn small" :class="{ active: comment.likes?.includes(currentUser) }">👍 {{ comment.likeCount || 0 }}</button>
+                  <button @click="dislikeComment(comment)" class="action-btn dislike-btn small" :class="{ active: comment.dislikes?.includes(currentUser) }">👎 {{ comment.dislikeCount || 0 }}</button>
+                  <button @click="toggleReplyForm(post.id, comment.id)" class="action-btn reply-btn small">回复</button>
+                  <button v-if="comment.authorName === currentUser" @click="deleteComment(post.id, comment.id)" class="action-btn delete-btn small">删除</button>
+                </div>
+                
+                <!-- 回复输入框 -->
+                <div v-if="replyFormVisible[post.id] === comment.id" class="reply-form">
+                  <textarea v-model="replyFormContent[post.id]" placeholder="写下你的回复..." class="reply-textarea"></textarea>
+                  <div class="reply-form-buttons">
+                    <button @click="submitReply(post.id, comment.id)" class="reply-submit-btn">发布回复</button>
+                    <button @click="cancelReply(post.id)" class="reply-cancel-btn">取消</button>
+                  </div>
+                </div>
+                
+                <!-- 回复列表 -->
+                <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                  <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                    <div class="comment-author">
+                      <img :src="getImageUrl(reply.authorAvatar)" :alt="reply.authorName" class="comment-avatar" @click="goToUserProfile(reply.authorName)" style="cursor: pointer;">
+                      <div class="comment-info">
+                        <h5 class="comment-author-name" @click="goToUserProfile(reply.authorName)" style="cursor: pointer;">{{ reply.authorName }}</h5>
+                        <span class="comment-time">{{ formatTime(reply.createTime) }}</span>
+                      </div>
+                    </div>
+                    <div class="comment-content">{{ reply.content }}</div>
+                    <div class="comment-actions">
+                      <button @click="likeComment(reply)" class="action-btn like-btn small" :class="{ active: reply.likes?.includes(currentUser) }">👍 {{ reply.likeCount || 0 }}</button>
+                      <button @click="dislikeComment(reply)" class="action-btn dislike-btn small" :class="{ active: reply.dislikes?.includes(currentUser) }">👎 {{ reply.dislikeCount || 0 }}</button>
+                      <button v-if="reply.authorName === currentUser" @click="deleteReply(post.id, comment.id, reply.id)" class="action-btn delete-btn small">删除</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -416,6 +444,10 @@ const commentSortOptions = [
 const commentSort = ref<Record<number, string>>({});
 const commentSortOrder = ref<Record<number, string>>({});
 
+// 回复相关状态
+const replyFormVisible = ref<Record<number, number | null>>({}); // postId -> commentId (null表示隐藏)
+const replyFormContent = ref<Record<number, string>>({});
+
 // 评论分页
 const commentCurrentPage = ref<Record<number, number>>({});
 const commentPages = ref<Record<number, number>>({});
@@ -436,6 +468,104 @@ const toggleCommentSortOrder = (postId: number) => {
 // 切换评论页面
 const changeCommentPage = (postId: number, page: number) => {
   commentCurrentPage.value[postId] = page;
+};
+
+// 切换回复输入框
+const toggleReplyForm = (postId: number, commentId: number) => {
+  if (replyFormVisible.value[postId] === commentId) {
+    replyFormVisible.value[postId] = null;
+  } else {
+    replyFormVisible.value[postId] = commentId;
+    replyFormContent.value[postId] = '';
+  }
+};
+
+// 取消回复
+const cancelReply = (postId: number) => {
+  replyFormVisible.value[postId] = null;
+  replyFormContent.value[postId] = '';
+};
+
+// 提交回复
+const submitReply = async (postId: number, commentId: number) => {
+  const content = replyFormContent.value[postId];
+  if (!content) {
+    ElMessage.warning('请输入回复内容');
+    return;
+  }
+
+  try {
+    const res = await axios.post('http://localhost:8080/api/comment/addComment', {
+      postId,
+      username: currentUser.value,
+      content,
+      parentId: commentId
+    });
+    
+    if (res.data.code === 200) {
+      const post = posts.value.find(p => p.id === postId);
+      if (post) {
+        const newReply = res.data.data as Comment;
+        const userAvatar = localStorage.getItem('avatar');
+        if (userAvatar) {
+          newReply.authorAvatar = userAvatar;
+        }
+        newReply.likes = [];
+        newReply.dislikes = [];
+        newReply.likeCount = 0;
+        newReply.dislikeCount = 0;
+        
+        // 找到父评论并添加回复
+        const parentComment = post.comments.find(c => c.id === commentId);
+        if (parentComment) {
+          if (!parentComment.replies) {
+            parentComment.replies = [];
+          }
+          parentComment.replies.push(newReply);
+          post.commentCount++;
+        }
+      }
+      replyFormVisible.value[postId] = null;
+      replyFormContent.value[postId] = '';
+      ElMessage.success('回复发布成功！');
+    } else {
+      ElMessage.error('回复发布失败：' + res.data.msg);
+    }
+  } catch (error) {
+    console.error('发布回复失败：', error);
+    ElMessage.error('发布回复失败，请重试');
+  }
+};
+
+// 删除回复
+const deleteReply = async (postId: number, commentId: number, replyId: number) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条回复吗？', '删除确认', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    
+    const res = await axios.post('http://localhost:8080/api/comment/deleteComment', {
+      commentId: replyId
+    });
+    if (res.data.code === 200) {
+      const post = posts.value.find(p => p.id === postId);
+      if (post) {
+        const parentComment = post.comments.find(c => c.id === commentId);
+        if (parentComment && parentComment.replies) {
+          parentComment.replies = parentComment.replies.filter(r => r.id !== replyId);
+          post.commentCount--;
+          ElMessage.success('回复删除成功！');
+        }
+      }
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除回复失败：', error);
+      ElMessage.error('删除回复失败，请重试');
+    }
+  }
 };
 
 // 定义回复类型
@@ -848,18 +978,37 @@ const loadComments = async (postId: number) => {
         // 处理评论数据，确保头像路径正确
         const comments = res.data.data as Comment[];
         const userAvatar = localStorage.getItem('avatar');
+        let totalCommentCount = 0;
+        
         comments.forEach(comment => {
           if (comment.authorName === currentUser.value && userAvatar) {
-            // 如果是当前用户的评论，使用最新的头像
             comment.authorAvatar = userAvatar;
           }
-          // 添加点赞和点踩相关字段
           comment.likes = comment.likes || [];
           comment.dislikes = comment.dislikes || [];
           comment.likeCount = comment.likeCount || 0;
           comment.dislikeCount = comment.dislikeCount || 0;
+          totalCommentCount++; // 顶级评论
+          
+          // 处理回复
+          if (comment.replies) {
+            comment.replies.forEach(reply => {
+              if (reply.authorName === currentUser.value && userAvatar) {
+                reply.authorAvatar = userAvatar;
+              }
+              reply.likes = reply.likes || [];
+              reply.dislikes = reply.dislikes || [];
+              reply.likeCount = reply.likeCount || 0;
+              reply.dislikeCount = reply.dislikeCount || 0;
+              totalCommentCount++; // 回复
+            });
+          } else {
+            comment.replies = [];
+          }
         });
+        
         post.comments = comments;
+        post.commentCount = totalCommentCount;
         console.log('评论数据：', post.comments);
         
         // 初始化评论排序和分页状态
@@ -872,7 +1021,7 @@ const loadComments = async (postId: number) => {
         if (commentCurrentPage.value[postId] === undefined) {
           commentCurrentPage.value[postId] = 1;
         }
-        // 计算评论页数
+        // 计算评论页数（只计算顶级评论）
         commentPages.value[postId] = Math.ceil(comments.length / commentsPerPage);
       }
     }
@@ -911,6 +1060,9 @@ const addComment = async (postId: number) => {
           // 使用最新的头像
           newComment.authorAvatar = userAvatar;
         }
+        newComment.replies = [];
+        newComment.likes = [];
+        newComment.dislikes = [];
         post.comments.push(newComment);
         post.commentCount++;
         commentForm.value[postId] = '';
@@ -941,12 +1093,17 @@ const deleteComment = async (postId: number, commentId: number) => {
     if (res.data.code === 200) {
       const post = posts.value.find(p => p.id === postId);
       if (post) {
-          // 从评论列表中移除该评论
-          post.comments = post.comments.filter(comment => comment.id !== commentId);
-          // 更新评论数
-          post.commentCount--;
+        // 找到要删除的评论
+        const comment = post.comments.find(c => c.id === commentId);
+        if (comment) {
+          // 计算要减少的评论数（包括回复）
+          const replyCount = comment.replies ? comment.replies.length : 0;
+          post.commentCount -= (1 + replyCount);
+          // 从评论列表中移除
+          post.comments = post.comments.filter(c => c.id !== commentId);
           ElMessage.success('评论删除成功！');
         }
+      }
     }
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -1807,6 +1964,119 @@ onMounted(async () => {
 
 .comment-submit-btn:hover {
   background: #ff5252;
+}
+
+/* 回复表单样式 */
+.reply-form {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0f0f0;
+  border-radius: 6px;
+}
+
+.reply-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 60px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.reply-textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
+}
+
+.reply-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.reply-submit-btn {
+  padding: 5px 14px;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s;
+}
+
+.reply-submit-btn:hover {
+  background: #ff5252;
+}
+
+.reply-cancel-btn {
+  padding: 5px 14px;
+  background: #e0e0e0;
+  color: #666;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s;
+}
+
+.reply-cancel-btn:hover {
+  background: #d0d0d0;
+}
+
+/* 回复列表样式 */
+.replies-section {
+  margin-top: 12px;
+  padding-left: 20px;
+  border-left: 2px solid #ff6b6b;
+}
+
+.reply-item {
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.reply-item:last-child {
+  margin-bottom: 0;
+}
+
+.reply-item .comment-author {
+  margin-bottom: 6px;
+}
+
+.reply-item .comment-avatar {
+  width: 24px;
+  height: 24px;
+}
+
+.reply-item .comment-author-name {
+  font-size: 13px;
+}
+
+.reply-item .comment-time {
+  font-size: 11px;
+}
+
+.reply-item .comment-content {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.reply-item .action-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+/* 回复按钮样式 */
+.reply-btn.small:hover {
+  border-color: #4CAF50;
+  color: #4CAF50;
 }
 
 /* 用户资料弹窗样式 */

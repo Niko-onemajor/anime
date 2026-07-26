@@ -20,6 +20,9 @@ public class Comment {
     @Column(name = "post_id", nullable = false)
     private Long postId;
 
+    @Column(name = "parent_id")
+    private Long parentId;
+
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 

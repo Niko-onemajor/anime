@@ -25,17 +25,18 @@ public class CommentController {
     @Autowired
     private ForumCommentInteractionRepository forumCommentInteractionRepository;
 
-    // 获取帖子的评论列表
+    // 获取帖子的评论列表（嵌套结构：顶级评论 + 回复）
     @PostMapping("/getComments")
     public Map<String, Object> getComments(@RequestBody Map<String, Long> request) {
         Map<String, Object> response = new HashMap<>();
         Long postId = request.get("postId");
 
-        List<Comment> comments = commentService.getCommentsByPostId(postId);
+        // 获取顶级评论（parentId为null的评论）
+        List<Comment> topLevelComments = commentService.getTopLevelComments(postId);
 
-        // 构建带用户信息的评论列表
+        // 构建带用户信息和嵌套回复的评论列表
         List<Map<String, Object>> commentList = new ArrayList<>();
-        for (Comment comment : comments) {
+        for (Comment comment : topLevelComments) {
             // 重新计算点赞数和点踩数
             int likeCount = forumCommentInteractionRepository.countByCommentIdAndInteractionType(comment.getId(), 1);
             int dislikeCount = forumCommentInteractionRepository.countByCommentIdAndInteractionType(comment.getId(), 2);
@@ -43,6 +44,21 @@ public class CommentController {
             comment.setDislikeCount(dislikeCount);
             
             Map<String, Object> commentMap = buildCommentMap(comment);
+            
+            // 获取该评论的回复
+            List<Comment> replies = commentService.getReplies(comment.getId());
+            List<Map<String, Object>> replyList = new ArrayList<>();
+            for (Comment reply : replies) {
+                int replyLikeCount = forumCommentInteractionRepository.countByCommentIdAndInteractionType(reply.getId(), 1);
+                int replyDislikeCount = forumCommentInteractionRepository.countByCommentIdAndInteractionType(reply.getId(), 2);
+                reply.setLikeCount(replyLikeCount);
+                reply.setDislikeCount(replyDislikeCount);
+                
+                Map<String, Object> replyMap = buildCommentMap(reply);
+                replyList.add(replyMap);
+            }
+            commentMap.put("replies", replyList);
+            
             commentList.add(commentMap);
         }
 
@@ -71,13 +87,19 @@ public class CommentController {
         return commentMap;
     }
 
-    // 添加评论
+    // 添加评论（支持回复）
     @PostMapping("/addComment")
     public Map<String, Object> addComment(@RequestBody Map<String, Object> request) {
         Map<String, Object> response = new HashMap<>();
         Long postId = Long.valueOf(request.get("postId").toString());
         String username = (String) request.get("username");
         String content = (String) request.get("content");
+        
+        // parentId 可选，用于回复
+        Long parentId = null;
+        if (request.get("parentId") != null) {
+            parentId = Long.valueOf(request.get("parentId").toString());
+        }
 
         // 获取用户ID
         User user = userService.findByUsername(username);
@@ -87,7 +109,7 @@ public class CommentController {
             return response;
         }
 
-        Comment comment = commentService.addComment(postId, user.getId(), content);
+        Comment comment = commentService.addComment(postId, user.getId(), content, parentId);
 
         // 构建返回数据
         Map<String, Object> commentMap = new HashMap<>();
@@ -96,11 +118,12 @@ public class CommentController {
         commentMap.put("createTime", comment.getCreateTime());
         commentMap.put("likeCount", comment.getLikeCount());
         commentMap.put("dislikeCount", comment.getDislikeCount());
+        commentMap.put("parentId", comment.getParentId());
         commentMap.put("authorName", user.getUsername());
         commentMap.put("authorAvatar", user.getAvatar());
 
         response.put("code", 200);
-        response.put("msg", "评论添加成功");
+        response.put("msg", parentId != null ? "回复添加成功" : "评论添加成功");
         response.put("data", commentMap);
         return response;
     }

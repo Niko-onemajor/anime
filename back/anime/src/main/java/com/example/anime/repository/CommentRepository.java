@@ -12,5 +12,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     // 根据用户ID查询评论
     List<Comment> findByAuthorId(Long authorId);
 
+    // 根据父评论ID查询回复
+    List<Comment> findByParentId(Long parentId);
+
+    // 根据帖子ID和parentId为null查询顶级评论
+    List<Comment> findByPostIdAndParentIdIsNull(Long postId);
 
 }

@@ -21,14 +21,30 @@ public class CommentService {
 
     // 添加评论
     public Comment addComment(Long postId, Long authorId, String content) {
+        return addComment(postId, authorId, content, null);
+    }
+
+    // 添加评论或回复
+    public Comment addComment(Long postId, Long authorId, String content, Long parentId) {
         Comment comment = new Comment();
         comment.setPostId(postId);
         comment.setAuthorId(authorId);
         comment.setContent(content);
+        comment.setParentId(parentId);
         comment.setCreateTime(new Date());
         comment.setLikeCount(0);
         comment.setDislikeCount(0);
         return commentRepository.save(comment);
+    }
+
+    // 获取帖子的顶级评论（不含回复）
+    public List<Comment> getTopLevelComments(Long postId) {
+        return commentRepository.findByPostIdAndParentIdIsNull(postId);
+    }
+
+    // 获取评论的回复列表
+    public List<Comment> getReplies(Long parentId) {
+        return commentRepository.findByParentId(parentId);
     }
 
     // 根据帖子ID获取评论列表
@@ -43,11 +59,17 @@ public class CommentService {
         return commentRepository.findByAuthorId(authorId);
     }
 
-    // 删除评论
+    // 删除评论（级联删除回复）
     public Comment deleteComment(Long commentId) {
         Comment comment = commentRepository.findById(commentId).orElse(null);
         if (comment != null) {
-            // 先删除评论的互动记录
+            // 先删除所有子回复
+            List<Comment> replies = commentRepository.findByParentId(commentId);
+            for (Comment reply : replies) {
+                deleteComment(reply.getId());
+            }
+            
+            // 删除评论的互动记录
             List<ForumCommentInteraction> interactions = forumCommentInteractionRepository.findAll().stream()
                     .filter(interaction -> interaction.getCommentId().equals(commentId))
                     .collect(java.util.stream.Collectors.toList());

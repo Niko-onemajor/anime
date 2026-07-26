@@ -21,8 +21,9 @@
       <!-- 搜索和排序 -->
       <div class="actions">
         <div class="search-box">
-          <input type="text" v-model="searchKeyword" placeholder="搜索帖子标题或内容..." class="search-input">
+          <input type="text" v-model="searchKeyword" placeholder="搜索帖子标题或内容..." class="search-input" @keyup.enter="searchPosts">
           <button @click="searchPosts" class="search-btn">搜索</button>
+          <button v-if="isSearching" @click="clearSearch" class="clear-btn">清除</button>
         </div>
         <div class="sort-box">
           <label for="sort">排序方式：</label>
@@ -188,6 +189,7 @@ const reload = inject('reload') as () => void;
 
 // 搜索关键词
 const searchKeyword = ref('');
+const isSearching = ref(false);
 
 // 排序方式
 const sortBy = ref('time');
@@ -242,6 +244,13 @@ const showDeleteConfirmDialog = ref(false);
 const postToDelete = ref(0);
 const commentToDelete = ref({ postId: 0, commentId: 0 });
 
+// 清除搜索
+const clearSearch = () => {
+  searchKeyword.value = '';
+  isSearching.value = false;
+  loadPosts();
+};
+
 // 加载帖子列表
 const loadPosts = async () => {
   try {
@@ -253,6 +262,7 @@ const loadPosts = async () => {
             authorAvatar: post.author?.avatar || ''
           }));
           postPage.value = 1;
+          isSearching.value = false;
         }
   } catch (error) {
     console.error('加载帖子列表失败：', error);
@@ -272,6 +282,7 @@ const searchPosts = async () => {
             authorAvatar: post.author?.avatar || ''
           }));
           postPage.value = 1;
+          isSearching.value = true;
         }
   } catch (error) {
     console.error('搜索帖子失败：', error);
@@ -286,6 +297,24 @@ const toggleSortDirection = () => {
 
 // 排序帖子
 const sortPosts = async () => {
+  // 搜索模式下，客户端排序当前搜索结果
+  if (isSearching.value && searchKeyword.value) {
+    const sorted = [...posts.value];
+    const dir = sortDirection.value === 'desc' ? -1 : 1;
+    if (sortBy.value === 'time') {
+      sorted.sort((a, b) => dir * (new Date(b.createTime).getTime() - new Date(a.createTime).getTime()));
+    } else if (sortBy.value === 'comments') {
+      sorted.sort((a, b) => dir * ((b.commentCount || 0) - (a.commentCount || 0)));
+    } else if (sortBy.value === 'likes') {
+      sorted.sort((a, b) => dir * ((b.likeCount || 0) - (a.likeCount || 0)));
+    } else if (sortBy.value === 'dislikes') {
+      sorted.sort((a, b) => dir * ((b.dislikeCount || 0) - (a.dislikeCount || 0)));
+    }
+    posts.value = sorted;
+    postPage.value = 1;
+    return;
+  }
+
   try {
     const res = await api.post('http://localhost:8080/api/admin/forum/posts/sort', {
       sortBy: sortBy.value,
@@ -660,6 +689,21 @@ onUnmounted(() => {
 
 .search-btn:hover {
   background: #ff5252;
+}
+
+.clear-btn {
+  padding: 8px 16px;
+  background: #999;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.clear-btn:hover {
+  background: #777;
 }
 
 .sort-box {

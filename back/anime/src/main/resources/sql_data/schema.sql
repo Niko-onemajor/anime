@@ -1,5 +1,9 @@
 -- 删除现有的表（如果存在）
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS chat_messages;
+DROP TABLE IF EXISTS follows;
 DROP TABLE IF EXISTS favorites;
+DROP TABLE IF EXISTS forum_post_interactions;
 DROP TABLE IF EXISTS comment_interactions;
 DROP TABLE IF EXISTS forum_comment_interactions;
 DROP TABLE IF EXISTS anime_comments;
@@ -174,4 +178,50 @@ CREATE TABLE watch_history (
     INDEX idx_user_anime (user_id, anime_id),
     INDEX idx_user_watch_time (user_id, watch_time),
     INDEX idx_anime_id (anime_id)
+);
+
+-- 创建关注表
+CREATE TABLE follows (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    follower_id BIGINT NOT NULL,
+    followed_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL,
+    UNIQUE KEY unique_follow (follower_id, followed_id),
+    FOREIGN KEY (follower_id) REFERENCES users(id),
+    FOREIGN KEY (followed_id) REFERENCES users(id),
+    INDEX idx_follower_id (follower_id),
+    INDEX idx_followed_id (followed_id)
+);
+
+-- 创建聊天消息表
+CREATE TABLE chat_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    sender_id BIGINT NOT NULL,
+    receiver_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    create_time DATETIME NOT NULL,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id),
+    INDEX idx_sender_receiver (sender_id, receiver_id),
+    INDEX idx_receiver_sender (receiver_id, sender_id),
+    INDEX idx_create_time (create_time)
+);
+
+-- 创建通知表
+CREATE TABLE notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    message VARCHAR(500) NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    create_time DATETIME NOT NULL,
+    target_id BIGINT,
+    target_type VARCHAR(20),
+    sub_target_id BIGINT,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_type (type),
+    INDEX idx_create_time (create_time)
 );

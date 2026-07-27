@@ -210,9 +210,12 @@
           </div>
         </div>
         <div class="dialog-footer">
-          <button @click="toggleFollow" class="btn follow-btn" :class="{ following: isProfileFollowing }">{{ isProfileFollowing ? '已关注' : '关注' }}</button>
-          <button v-if="selectedUser.username !== currentUser" @click="goToDM(selectedUser.username)" class="btn dm-btn">私信</button>
-          <button @click="closeUserProfile" class="btn cancel-btn">关闭</button>
+          <button @click="goToUserHome(selectedUser.username)" class="btn profile-home-btn">查看个人主页</button>
+          <div class="dialog-footer-right">
+            <button @click="toggleFollow" class="btn follow-btn" :class="{ following: isProfileFollowing }">{{ isProfileFollowing ? '已关注' : '关注' }}</button>
+            <button v-if="selectedUser.username !== currentUser" @click="goToDM(selectedUser.username)" class="btn dm-btn">私信</button>
+            <button @click="closeUserProfile" class="btn cancel-btn">关闭</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1113,6 +1116,11 @@ const goToDM = function(username: string) {
   router.push('/chat?user=' + profileUserId.value);
 };
 
+// 跳转到用户个人主页
+const goToUserHome = function(username: string) {
+  router.push('/user/' + username);
+};
+
 // 删除评论
 const deleteComment = async function(commentId: number) {
   try {
@@ -1752,10 +1760,32 @@ h1 {
 
 .dialog-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding: 20px;
   border-top: 1px solid #eee;
+}
+
+.dialog-footer-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.profile-home-btn {
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 16px;
+  transition: background 0.3s;
+}
+
+.profile-home-btn:hover {
+  background: #f57c00;
 }
 
 .btn {
@@ -1794,12 +1824,12 @@ h1 {
 }
 
 .dm-btn {
-  background: #7c4dff;
+  background: #2196f3;
   color: #fff;
 }
 
 .dm-btn:hover {
-  background: #651fff;
+  background: #1976d2;
 }
 
 /* 用户资料弹窗样式 */
@@ -1872,9 +1902,9 @@ h1 {
 }
 
 .user-profile-info {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .profile-item {

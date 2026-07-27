@@ -275,6 +275,22 @@ const loadNotifications = async () => {
     if (response.data.code === 200) {
       notifications.value = response.data.data || [];
       navUnreadCount.value = response.data.unreadCount || 0;
+      // 如果没有通知数据，自动同步历史数据
+      if (notifications.value.length === 0) {
+        try {
+          const syncRes = await api.post('/api/notifications/sync');
+          if (syncRes.data.code === 200 && syncRes.data.count > 0) {
+            // 重新加载通知列表
+            const reloadRes = await api.get('/api/notifications/list', { params: { username } });
+            if (reloadRes.data.code === 200) {
+              notifications.value = reloadRes.data.data || [];
+              navUnreadCount.value = reloadRes.data.unreadCount || 0;
+            }
+          }
+        } catch (e) {
+          console.error('同步通知失败:', e);
+        }
+      }
     }
     // 加载私信会话
     await loadDmConversations();

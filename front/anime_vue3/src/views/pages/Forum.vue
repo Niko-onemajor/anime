@@ -291,9 +291,12 @@
           </div>
         </div>
         <div class="dialog-footer">
-          <button v-if="selectedUser.username !== currentUser" @click="toggleFollow" class="btn follow-btn" :class="{ following: isProfileFollowing }">{{ isProfileFollowing ? '已关注' : '关注' }}</button>
-          <button v-if="selectedUser.username !== currentUser" @click="goToDM(selectedUser.username)" class="btn dm-btn">私信</button>
-          <button @click="closeUserProfile" class="btn cancel-btn">关闭</button>
+          <button @click="goToUserHome(selectedUser.username)" class="btn profile-home-btn">查看个人主页</button>
+          <div class="dialog-footer-right">
+            <button v-if="selectedUser.username !== currentUser" @click="toggleFollow" class="btn follow-btn" :class="{ following: isProfileFollowing }">{{ isProfileFollowing ? '已关注' : '关注' }}</button>
+            <button v-if="selectedUser.username !== currentUser" @click="goToDM(selectedUser.username)" class="btn dm-btn">私信</button>
+            <button @click="closeUserProfile" class="btn cancel-btn">关闭</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1373,6 +1376,11 @@ const goToDM = (username: string) => {
   router.push(`/chat?user=${profileUserId.value}`);
 };
 
+// 跳转到用户个人主页
+const goToUserHome = (username: string) => {
+  router.push(`/user/${username}`);
+};
+
 // 处理从消息通知跳转：定位到指定帖子和评论
 const handleNavigateToPost = async (postId: number, commentId: number | null) => {
   // 找到目标帖子
@@ -1900,10 +1908,32 @@ onMounted(async () => {
 
 .dialog-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding: 20px;
   border-top: 1px solid #eee;
+}
+
+.dialog-footer-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.profile-home-btn {
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 16px;
+  transition: background 0.3s;
+}
+
+.profile-home-btn:hover {
+  background: #f57c00;
 }
 
 .btn {
@@ -2392,9 +2422,9 @@ onMounted(async () => {
 }
 
 .user-profile-info {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .profile-item {

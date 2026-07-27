@@ -53,6 +53,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/player/AnimePlayer.vue')
   },
   {
+    path: '/user/:username',
+    name: 'userHome',
+    component: () => import('../views/pages/UserHome.vue')
+  },
+  {
     path: '/test',
     name: 'test',
     component: () => import('../views/test/TestPage.vue')

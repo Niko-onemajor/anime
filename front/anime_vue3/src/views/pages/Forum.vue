@@ -1328,14 +1328,14 @@ const loadFollowStatus = async (userId: number) => {
       params: { userId }
     });
     if (fanRes.data && fanRes.data.code === 200) {
-      profileFanCount.value = fanRes.data.data || 0;
+      profileFanCount.value = fanRes.data.data.count || 0;
     }
     
     const statusRes = await axios.get('http://localhost:8080/api/follow/status', {
       params: { followerId: currentUserId.value, followedId: userId }
     });
     if (statusRes.data && statusRes.data.code === 200) {
-      isProfileFollowing.value = statusRes.data.data || false;
+      isProfileFollowing.value = statusRes.data.data.following || false;
     }
   } catch (error) {
     console.error('加载关注状态失败：', error);
@@ -1354,13 +1354,11 @@ const toggleFollow = async () => {
       followedId: profileUserId.value
     });
     if (res.data && res.data.code === 200) {
-      isProfileFollowing.value = !isProfileFollowing.value;
-      if (isProfileFollowing.value) {
-        profileFanCount.value++;
-      } else {
-        profileFanCount.value--;
-      }
-      ElMessage.success(isProfileFollowing.value ? '关注成功' : '已取消关注');
+      // 直接使用后端返回的followed状态，而非本地反转
+      const followed = res.data.data.followed;
+      isProfileFollowing.value = followed;
+      profileFanCount.value += followed ? 1 : -1;
+      ElMessage.success(followed ? '关注成功' : '已取消关注');
     } else {
       ElMessage.warning(res.data.msg || '操作失败');
     }
@@ -1372,7 +1370,7 @@ const toggleFollow = async () => {
 
 // 跳转到私信页面
 const goToDM = (username: string) => {
-  router.push(`/chat?user=${username}`);
+  router.push(`/chat?user=${profileUserId.value}`);
 };
 
 // 处理从消息通知跳转：定位到指定帖子和评论
@@ -1400,18 +1398,29 @@ const handleNavigateToPost = async (postId: number, commentId: number | null) =>
 
   // 如果指定了评论ID，定位到该评论
   if (commentId) {
-    // 在评论列表中找到目标评论，计算页码
     const post = posts.value.find(p => p.id === postId);
     if (post && post.comments) {
       const allComments = [...post.comments];
-      const commentIndex = allComments.findIndex((c: any) => c.id === commentId);
+      let parentCommentId = commentId;
+      // 先在顶层评论中查找
+      let commentIndex = allComments.findIndex((c: any) => c.id === commentId);
+      // 如果没找到，可能是回复，在回复中查找其父评论
+      if (commentIndex === -1) {
+        for (let i = 0; i < allComments.length; i++) {
+          const c = allComments[i];
+          if (c.replies && c.replies.some((r: any) => r.id === commentId)) {
+            parentCommentId = c.id;
+            commentIndex = i;
+            break;
+          }
+        }
+      }
       if (commentIndex !== -1) {
         const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
         commentCurrentPage.value[postId] = targetPage;
         await nextTick();
-        // 滚动到评论
         setTimeout(() => {
-          const commentEl = document.getElementById('comment-' + commentId);
+          const commentEl = document.getElementById('comment-' + parentCommentId);
           if (commentEl) {
             commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }

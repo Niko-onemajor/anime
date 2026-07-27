@@ -193,7 +193,28 @@ const loadConversations = async () => {
 
 const selectConversation = async (userId: number) => {
   activePartnerId.value = userId;
-  const partner = conversations.value.find(c => c.userId === userId);
+  let partner = conversations.value.find(c => c.userId === userId);
+  
+  // 如果会话列表中没有该用户，加载用户信息
+  if (!partner) {
+    try {
+      const res = await api.get('/api/user/info-by-id', { params: { id: userId } });
+      if (res.data.code === 200) {
+        const user = res.data.data;
+        partner = {
+          userId: user.id,
+          username: user.username,
+          avatar: user.avatar || '',
+          lastMessage: '',
+          lastMessageTime: null,
+          unreadCount: 0
+        };
+      }
+    } catch (e) {
+      console.error('获取用户信息失败:', e);
+    }
+  }
+  
   activePartner.value = partner || null;
 
   if (partner) {
@@ -226,9 +247,9 @@ const loadMessages = async (partnerId?: number) => {
 
 const markAsRead = async (partnerId: number) => {
   try {
-    await api.post('/api/chat/read', {
-      userId: currentUserId.value,
-      partnerId: partnerId
+    await api.post('/api/chat/mark-read', {
+      senderId: partnerId,
+      receiverId: currentUserId.value
     });
   } catch (error) {
     console.error('标记已读失败:', error);

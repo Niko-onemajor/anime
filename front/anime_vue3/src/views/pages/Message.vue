@@ -152,6 +152,39 @@ const notifications = ref<any[]>([]);
 const showClearConfirm = ref(false);
 const currentPage = ref(1);
 const pageSize = 6;
+const currentUserId = ref<number | null>(null);
+
+// 加载聊天会话列表用于私信tab
+const loadDmConversations = async () => {
+  if (!currentUserId.value) return;
+  try {
+    const res = await api.get('/api/chat/conversations', {
+      params: { userId: currentUserId.value }
+    });
+    if (res.data.code === 200) {
+      const conversations = res.data.data || [];
+      // 转换为通知格式以便在列表中显示
+      const dmNotifications = conversations.map((conv: any) => ({
+        id: 'dm-' + conv.userId,
+        type: 'DM',
+        message: conv.lastMessage || '暂无消息',
+        createTime: conv.lastMessageTime || new Date().toISOString(),
+        isRead: conv.unreadCount === 0,
+        senderId: conv.userId,
+        senderName: conv.username,
+        senderAvatar: conv.avatar
+      }));
+      // 合并：保留非DM的通知 + DM会话
+      const nonDmNotifications = notifications.value.filter(n =>
+        n.type === 'FORUM_REPLY' || n.type === 'FORUM_LIKE' || n.type === 'FORUM_DISLIKE' ||
+        n.type === 'ANIME_REPLY' || n.type === 'ANIME_LIKE' || n.type === 'ANIME_DISLIKE'
+      );
+      notifications.value = [...nonDmNotifications, ...dmNotifications];
+    }
+  } catch (error) {
+    console.error('加载私信会话失败:', error);
+  }
+};
 
 const filteredNotifications = computed(() => {
   if (activeTab.value === 'dm') {
@@ -230,6 +263,12 @@ const loadNotifications = async () => {
 
   try {
     isLoading.value = true;
+    // 获取当前用户ID
+    const userRes = await api.get('/api/user/info', { params: { username } });
+    if (userRes.data.code === 200) {
+      currentUserId.value = userRes.data.data.id;
+    }
+    
     const response = await api.get('/api/notifications/list', {
       params: { username }
     });
@@ -237,6 +276,8 @@ const loadNotifications = async () => {
       notifications.value = response.data.data || [];
       navUnreadCount.value = response.data.unreadCount || 0;
     }
+    // 加载私信会话
+    await loadDmConversations();
   } catch (error) {
     console.error('获取通知失败:', error);
   } finally {
@@ -254,6 +295,12 @@ const handleNotificationClick = async (notification: any) => {
     } catch (error) {
       console.error('标记已读失败:', error);
     }
+  }
+
+  // 私信消息跳转到聊天页面
+  if (notification.type === 'DM') {
+    router.push({ path: '/chat', query: { user: notification.senderId } });
+    return;
   }
 
   // 根据通知类型跳转到对应页面

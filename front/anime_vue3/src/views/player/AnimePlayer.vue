@@ -70,14 +70,7 @@
             切换
           </button>
         </div>
-        <div class="comment-pagination" v-if="commentTotalPages > 1">
-          <button @click="commentCurrentPage = 1" class="page-btn" :disabled="commentCurrentPage === 1">首页</button>
-          <button @click="commentCurrentPage = commentCurrentPage - 1" class="page-btn" :disabled="commentCurrentPage === 1">上一页</button>
-          <span class="page-info">{{ commentCurrentPage }} / {{ commentTotalPages }}</span>
-          <button @click="commentCurrentPage = commentCurrentPage + 1" class="page-btn" :disabled="commentCurrentPage === commentTotalPages">下一页</button>
-          <button @click="commentCurrentPage = commentTotalPages" class="page-btn" :disabled="commentCurrentPage === commentTotalPages">尾页</button>
         </div>
-      </div>
       
       <!-- 评论列表 -->
       <div class="comments-list">
@@ -426,6 +419,7 @@ onMounted(async function() {
     const targetCommentId = Number(commentId);
     const sortedList = sortedComments.value;
     let parentCommentId = targetCommentId;
+    let isReply = false;
     // 先在顶层评论中查找
     let commentIndex = sortedList.findIndex(function(c) { return c.id === targetCommentId; });
     // 如果没找到，可能是回复，在回复中查找其父评论
@@ -435,22 +429,32 @@ onMounted(async function() {
         if (c.replies && c.replies.some(function(r: any) { return r.id === targetCommentId; })) {
           parentCommentId = c.id;
           commentIndex = i;
+          isReply = true;
           break;
         }
       }
     }
     if (commentIndex !== -1) {
+      // 如果是回复，展开父评论的回复列表
+      if (isReply) {
+        const parentComment = comments.value.find(function(c: any) { return c.id === parentCommentId; });
+        if (parentComment && !parentComment.showReplies) {
+          parentComment.showReplies = true;
+        }
+      }
       // 计算目标评论所在页码
       const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
       commentCurrentPage.value = targetPage;
+      // 使用 setTimeout 确保分页切换后 DOM 完全更新
       await nextTick();
-      // 滚动到父评论并高亮
-      const commentEl = document.getElementById('comment-' + parentCommentId);
-      if (commentEl) {
-        commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        commentEl.classList.add('highlight');
-        setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
-      }
+      setTimeout(function() {
+        const commentEl = document.getElementById('comment-' + parentCommentId);
+        if (commentEl) {
+          commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          commentEl.classList.add('highlight');
+          setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
+        }
+      }, 200);
     }
   }
 });
@@ -1050,13 +1054,13 @@ const loadFollowStatus = async function(userId: number) {
     // 获取粉丝数
     const countRes = await axios.get('/api/follow/follower-count?userId=' + userId);
     if (countRes.data && countRes.data.code === 200) {
-      profileFanCount.value = countRes.data.data || 0;
+      profileFanCount.value = countRes.data.data.count || 0;
     }
     // 获取关注状态
     if (currentUserId.value) {
       const statusRes = await axios.get('/api/follow/status?followerId=' + currentUserId.value + '&followedId=' + userId);
       if (statusRes.data && statusRes.data.code === 200) {
-        isProfileFollowing.value = statusRes.data.data || false;
+        isProfileFollowing.value = statusRes.data.data.following || false;
       }
     }
   } catch (error) {
@@ -1076,9 +1080,11 @@ const toggleFollow = async function() {
       followedId: profileUserId.value
     });
     if (res.data && res.data.code === 200) {
-      isProfileFollowing.value = !isProfileFollowing.value;
-      profileFanCount.value += isProfileFollowing.value ? 1 : -1;
-      ElMessage.success(isProfileFollowing.value ? '关注成功！' : '已取消关注');
+      // 直接使用后端返回的followed状态，而非本地反转
+      const followed = res.data.data.followed;
+      isProfileFollowing.value = followed;
+      profileFanCount.value += followed ? 1 : -1;
+      ElMessage.success(followed ? '关注成功！' : '已取消关注');
     } else {
       ElMessage.warning(res.data.msg || '操作失败');
     }
@@ -1090,7 +1096,7 @@ const toggleFollow = async function() {
 
 // 跳转到私信页面
 const goToDM = function(username: string) {
-  router.push('/chat?user=' + username);
+  router.push('/chat?user=' + profileUserId.value);
 };
 
 // 删除评论

@@ -149,6 +149,46 @@ public class UserController {
         return response;
     }
 
+    // 获取用户信息接口（通过用户名）
+    @GetMapping("/info")
+    public Map<String, Object> getUserInfo(@RequestParam String username) {
+        Map<String, Object> response = new HashMap<>();
+        User user = userService.findByUsername(username);
+        if (user == null) {
+            response.put("code", 400);
+            response.put("msg", "用户不存在");
+            return response;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("role", user.getRole());
+        data.put("avatar", user.getAvatar());
+        response.put("code", 200);
+        response.put("data", data);
+        return response;
+    }
+
+    // 获取用户信息接口（通过用户ID）
+    @GetMapping("/info-by-id")
+    public Map<String, Object> getUserInfoById(@RequestParam Long id) {
+        Map<String, Object> response = new HashMap<>();
+        User user = userService.findById(id);
+        if (user == null) {
+            response.put("code", 400);
+            response.put("msg", "用户不存在");
+            return response;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("role", user.getRole());
+        data.put("avatar", user.getAvatar());
+        response.put("code", 200);
+        response.put("data", data);
+        return response;
+    }
+
     // 获取用户资料接口
     @PostMapping("/profile")
     public Map<String, Object> getProfile(@RequestBody Map<String, String> request) {

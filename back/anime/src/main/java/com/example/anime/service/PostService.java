@@ -23,6 +23,8 @@ public class PostService {
     private CommentService commentService;
     @Autowired
     private ForumPostInteractionRepository forumPostInteractionRepository;
+    @Autowired
+    private NotificationService notificationService;
 
     // 获取所有帖子
     public List<Post> getAllPosts() {
@@ -141,6 +143,8 @@ public class PostService {
                     forumPostInteractionRepository.save(interaction);
                     post.setLikeCount(post.getLikeCount() + 1);
                     post.setDislikeCount(Math.max(0, post.getDislikeCount() - 1));
+                    // 通知帖子作者
+                    notifyPostAuthor(post, userId);
                 }
             } else {
                 // 没有互动过，添加点赞
@@ -151,6 +155,8 @@ public class PostService {
                 interaction.setCreateTime(new Date());
                 forumPostInteractionRepository.save(interaction);
                 post.setLikeCount(post.getLikeCount() + 1);
+                // 通知帖子作者
+                notifyPostAuthor(post, userId);
             }
             return postRepository.save(post);
         }
@@ -280,5 +286,21 @@ public class PostService {
         }
         // 再删除帖子
         postRepository.deleteById(id);
+    }
+
+    // 通知帖子作者被点赞
+    private void notifyPostAuthor(Post post, Long fromUserId) {
+        User author = post.getAuthor();
+        if (author == null || author.getId().equals(fromUserId)) {
+            return; // 不通知自己
+        }
+        User fromUser = userRepository.findById(fromUserId).orElse(null);
+        if (fromUser == null) return;
+        notificationService.notifyPostLike(
+            author.getId(),
+            author.getUsername(),
+            fromUser.getUsername(),
+            post.getTitle()
+        );
     }
 }

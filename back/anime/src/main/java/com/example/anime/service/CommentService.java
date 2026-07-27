@@ -66,6 +66,22 @@ public class CommentService {
                     );
                 }
             }
+        } else {
+            // 顶级评论：通知帖子作者
+            Post post = postRepository.findById(postId).orElse(null);
+            if (post != null && post.getAuthor() != null && !post.getAuthor().getId().equals(authorId)) {
+                User fromUser = userService.findById(authorId);
+                if (fromUser != null) {
+                    String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
+                    notificationService.notifyForumReply(
+                            post.getAuthor().getId(),
+                            post.getAuthor().getUsername(),
+                            fromUser.getUsername(),
+                            postTitle,
+                            content
+                    );
+                }
+            }
         }
 
         return savedComment;
@@ -203,6 +219,7 @@ public class CommentService {
 
     // 点踩评论
     public Comment dislikeComment(Long commentId, Long userId) {
+        boolean dislikeAdded = false;
         // 检查用户是否已经对该评论进行过互动
         Optional<ForumCommentInteraction> existingInteraction = forumCommentInteractionRepository.findByUserIdAndCommentId(userId, commentId);
         if (existingInteraction.isPresent()) {
@@ -218,6 +235,7 @@ public class CommentService {
                 interaction.setInteractionType(2); // 2: 点踩
                 interaction.setCreateTime(new Date());
                 forumCommentInteractionRepository.save(interaction);
+                dislikeAdded = true;
             }
         } else {
             // 没有互动过，添加点踩
@@ -227,6 +245,7 @@ public class CommentService {
             interaction.setInteractionType(2); // 2: 点踩
             interaction.setCreateTime(new Date());
             forumCommentInteractionRepository.save(interaction);
+            dislikeAdded = true;
         }
         
         Optional<Comment> commentOptional = commentRepository.findById(commentId);
@@ -235,7 +254,25 @@ public class CommentService {
             Comment comment = commentOptional.get();
             comment.setLikeCount(forumCommentInteractionRepository.countByCommentIdAndInteractionType(commentId, 1));
             comment.setDislikeCount(forumCommentInteractionRepository.countByCommentIdAndInteractionType(commentId, 2));
-            return commentRepository.save(comment);
+            Comment savedComment = commentRepository.save(comment);
+
+            // 新增点踩时通知评论作者（不通知自己）
+            if (dislikeAdded && !comment.getAuthorId().equals(userId)) {
+                User targetUser = userService.findById(comment.getAuthorId());
+                User fromUser = userService.findById(userId);
+                Post post = postRepository.findById(comment.getPostId()).orElse(null);
+                if (targetUser != null && fromUser != null && post != null) {
+                    String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
+                    notificationService.notifyForumDislike(
+                            targetUser.getId(),
+                            targetUser.getUsername(),
+                            fromUser.getUsername(),
+                            postTitle
+                    );
+                }
+            }
+
+            return savedComment;
         }
         return null;
     }

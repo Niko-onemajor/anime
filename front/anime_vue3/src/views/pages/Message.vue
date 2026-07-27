@@ -25,6 +25,33 @@
         </div>
       </div>
 
+      <!-- 分类标签 -->
+      <div class="category-tabs">
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'all' }"
+          @click="activeTab = 'all'"
+        >
+          <span>全部</span>
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'comment' }"
+          @click="activeTab = 'comment'"
+        >
+          <span class="tab-icon">💬</span>
+          <span>评论</span>
+        </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'like' }"
+          @click="activeTab = 'like'"
+        >
+          <span class="tab-icon">👍</span>
+          <span>点赞</span>
+        </button>
+      </div>
+
       <!-- 加载状态 -->
       <div v-if="isLoading" class="loading-container">
         <div class="loading-spinner"></div>
@@ -32,26 +59,25 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-else-if="notifications.length === 0" class="empty-container">
-        <p class="empty-text">暂无消息</p>
+      <div v-else-if="filteredNotifications.length === 0" class="empty-container">
+        <p class="empty-text">{{ activeTab === 'all' ? '暂无消息' : activeTab === 'comment' ? '暂无评论消息' : '暂无点赞消息' }}</p>
       </div>
 
       <!-- 通知列表 -->
       <div v-else class="notification-list">
         <div
-          v-for="notification in notifications"
+          v-for="notification in filteredNotifications"
           :key="notification.id"
           class="notification-item"
           :class="{ unread: !notification.isRead }"
           @click="markAsRead(notification)"
         >
           <div class="notification-icon">
-            <span v-if="notification.type === 'PASSWORD_RESET'" class="icon-reset">&#128274;</span>
-            <span v-else-if="notification.type === 'FORUM_REPLY'" class="icon-reply">&#128172;</span>
-            <span v-else-if="notification.type === 'FORUM_LIKE'" class="icon-like">&#128077;</span>
-            <span v-else-if="notification.type === 'ANIME_REPLY'" class="icon-reply">&#128172;</span>
-            <span v-else-if="notification.type === 'ANIME_LIKE'" class="icon-like">&#128077;</span>
-            <span v-else class="icon-default">&#128276;</span>
+            <span v-if="notification.type === 'FORUM_REPLY'" class="icon-reply">💬</span>
+            <span v-else-if="notification.type === 'FORUM_LIKE'" class="icon-like">👍</span>
+            <span v-else-if="notification.type === 'ANIME_REPLY'" class="icon-reply">💬</span>
+            <span v-else-if="notification.type === 'ANIME_LIKE'" class="icon-like">👍</span>
+            <span v-else class="icon-default">🔔</span>
           </div>
           <div class="notification-content">
             <span v-if="getTypeLabel(notification.type)" class="notification-type">{{ getTypeLabel(notification.type) }}</span>
@@ -73,13 +99,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '@/utils/api';
 
 const isAdmin = ref(false);
 const isLoading = ref(true);
+const activeTab = ref('all');
 const notifications = ref<any[]>([]);
 const unreadCount = ref(0);
+
+const filteredNotifications = computed(() => {
+  if (activeTab.value === 'all') {
+    return notifications.value;
+  } else if (activeTab.value === 'comment') {
+    return notifications.value.filter(n => n.type === 'FORUM_REPLY' || n.type === 'ANIME_REPLY');
+  } else {
+    return notifications.value.filter(n => n.type === 'FORUM_LIKE' || n.type === 'ANIME_LIKE');
+  }
+});
 
 const checkAdmin = () => {
   let role = localStorage.getItem('role');
@@ -274,6 +311,43 @@ onMounted(() => {
 .read-all-btn:hover {
   background: #ff6b6b;
   color: white;
+}
+
+/* 分类标签 */
+.category-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tab-btn:hover {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.tab-btn.active {
+  background: #ff6b6b;
+  border-color: #ff6b6b;
+  color: white;
+}
+
+.tab-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 /* 加载状态 */

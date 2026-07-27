@@ -98,4 +98,40 @@ public class NotificationService {
                 fromUsername, animeTitle);
         createNotification(targetUserId, targetUsername, "ANIME_LIKE", message);
     }
+
+    /**
+     * 论坛帖子被点赞通知
+     */
+    public void notifyPostLike(Long targetUserId, String targetUsername, String fromUsername, String postTitle) {
+        String message = String.format("用户 %s 赞了你的论坛帖子「%s」",
+                fromUsername, postTitle);
+        createNotification(targetUserId, targetUsername, "FORUM_LIKE", message);
+    }
+
+    /**
+     * 论坛评论被点踩通知
+     */
+    public void notifyForumDislike(Long targetUserId, String targetUsername, String fromUsername, String postTitle) {
+        String message = String.format("用户 %s 踩了你在论坛帖子「%s」中的评论",
+                fromUsername, postTitle);
+        createNotification(targetUserId, targetUsername, "FORUM_DISLIKE", message);
+    }
+
+    /**
+     * 动漫评论被点踩通知
+     */
+    public void notifyAnimeDislike(Long targetUserId, String targetUsername, String fromUsername, String animeTitle) {
+        String message = String.format("用户 %s 踩了你在动漫「%s」中的评论",
+                fromUsername, animeTitle);
+        createNotification(targetUserId, targetUsername, "ANIME_DISLIKE", message);
+    }
+
+    /**
+     * 论坛帖子被点踩通知
+     */
+    public void notifyPostDislike(Long targetUserId, String targetUsername, String fromUsername, String postTitle) {
+        String message = String.format("用户 %s 踩了你的论坛帖子「%s」",
+                fromUsername, postTitle);
+        createNotification(targetUserId, targetUsername, "FORUM_DISLIKE", message);
+    }
 }

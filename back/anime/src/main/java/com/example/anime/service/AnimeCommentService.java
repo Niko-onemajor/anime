@@ -228,6 +228,9 @@ public class AnimeCommentService {
                 commentInteractionRepository.delete(interaction);
             }
             
+            // 删除与该评论相关的通知
+            notificationService.deleteByCommentId(commentId);
+            
             // 再物理删除主评论
             animeCommentRepository.deleteById(commentId);
         }
@@ -245,6 +248,9 @@ public class AnimeCommentService {
             for (CommentInteraction interaction : replyInteractions) {
                 commentInteractionRepository.delete(interaction);
             }
+            
+            // 删除与该回复相关的通知
+            notificationService.deleteByCommentId(reply.getId());
             
             // 最后物理删除回复
             animeCommentRepository.deleteById(reply.getId());

@@ -26,4 +26,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Transactional
     @Query("DELETE FROM Notification n WHERE n.userId = :userId")
     void deleteAllByUserId(Long userId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Notification n WHERE n.subTargetId = :subTargetId")
+    void deleteBySubTargetId(Long subTargetId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Notification n WHERE n.targetType = :targetType AND n.targetId = :targetId")
+    void deleteByTargetTypeAndTargetId(String targetType, Long targetId);
 }

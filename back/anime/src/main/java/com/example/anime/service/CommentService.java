@@ -135,6 +135,10 @@ public class CommentService {
             for (ForumCommentInteraction interaction : interactions) {
                 forumCommentInteractionRepository.delete(interaction);
             }
+            
+            // 删除与该评论相关的通知
+            notificationService.deleteByCommentId(commentId);
+            
             // 再删除评论
             commentRepository.delete(comment);
         }

@@ -56,6 +56,20 @@ public class NotificationService {
     }
 
     /**
+     * 删除与指定评论相关的所有通知
+     */
+    public void deleteByCommentId(Long commentId) {
+        notificationRepository.deleteBySubTargetId(commentId);
+    }
+
+    /**
+     * 删除与指定目标（帖子/动漫）相关的所有通知
+     */
+    public void deleteByTarget(String targetType, Long targetId) {
+        notificationRepository.deleteByTargetTypeAndTargetId(targetType, targetId);
+    }
+
+    /**
      * 截断文本，避免通知内容过长
      */
     private String truncateContent(String content, int maxLength) {

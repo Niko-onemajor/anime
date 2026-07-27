@@ -192,7 +192,7 @@
             <div v-else-if="posts.length === 0" class="empty">暂无发布的帖子</div>
             <div v-else>
               <div class="post-list">
-                <div v-for="post in pagedPosts" :key="post.id" class="post-item">
+                <div v-for="post in pagedPosts" :key="post.id" class="post-item" @click="goToForumPost(post.id)">
                   <h4 class="post-title">{{ post.title }}</h4>
                   <p class="post-content">{{ post.content }}</p>
                   <div class="post-meta">
@@ -636,6 +636,10 @@ const goToAnimeDetail = (animeId: number) => {
   router.push(`/anime/${animeId}`);
 };
 
+const goToForumPost = (postId: number) => {
+  router.push({ path: '/forum', query: { postId, highlightPost: 'true' } });
+};
+
 onMounted(async () => {
   checkAdmin();
   fetchUnreadCount();
@@ -977,6 +981,13 @@ onMounted(async () => {
   background: #fafafa;
   border-radius: 8px;
   border: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.post-item:hover {
+  background: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 .post-title {
   font-size: 16px;

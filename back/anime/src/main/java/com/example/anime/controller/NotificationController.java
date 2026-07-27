@@ -3,6 +3,7 @@ package com.example.anime.controller;
 import com.example.anime.model.Notification;
 import com.example.anime.model.User;
 import com.example.anime.service.NotificationService;
+import com.example.anime.service.NotificationSyncService;
 import com.example.anime.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,9 @@ public class NotificationController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private NotificationSyncService notificationSyncService;
 
     @GetMapping("/list")
     public Map<String, Object> getNotifications(@RequestParam String username) {
@@ -122,5 +126,10 @@ public class NotificationController {
             response.put("msg", "获取未读数失败");
         }
         return response;
+    }
+
+    @PostMapping("/sync")
+    public Map<String, Object> syncNotifications() {
+        return notificationSyncService.syncAll();
     }
 }

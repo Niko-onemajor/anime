@@ -284,9 +284,15 @@
               <span class="profile-label">签名：</span>
               <span class="profile-value">{{ selectedUser.signature || '未设置' }}</span>
             </div>
+            <div class="profile-item">
+              <span class="profile-label">粉丝：</span>
+              <span class="profile-value">{{ profileFanCount }}</span>
+            </div>
           </div>
         </div>
         <div class="dialog-footer">
+          <button v-if="selectedUser.username !== currentUser" @click="toggleFollow" class="btn follow-btn" :class="{ following: isProfileFollowing }">{{ isProfileFollowing ? '已关注' : '关注' }}</button>
+          <button v-if="selectedUser.username !== currentUser" @click="goToDM(selectedUser.username)" class="btn dm-btn">私信</button>
           <button @click="closeUserProfile" class="btn cancel-btn">关闭</button>
         </div>
       </div>
@@ -311,12 +317,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, defineComponent, h, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
 import { ElMessageBox, ElMessage } from 'element-plus';
 
 const route = useRoute();
+const router = useRouter();
 
 // 处理图片URL
 const getImageUrl = (url: string | undefined | null): string => {
@@ -1243,6 +1250,12 @@ const selectedUser = ref({
   avatar: ''
 });
 
+// 关注/粉丝/私信相关
+const profileFanCount = ref(0);
+const isProfileFollowing = ref(false);
+const profileUserId = ref(0);
+const currentUserId = ref(0);
+
 // 显示头像预览弹窗
 const showAvatarPreviewModal = ref(false);
 
@@ -1290,6 +1303,10 @@ const loadUserProfile = async (username: string) => {
         avatar: userData.avatar || ''
       };
       
+      // 存储用户ID并加载关注状态
+      profileUserId.value = userData.id || 0;
+      await loadFollowStatus(userData.id);
+      
       // 如果是当前用户，使用localStorage中的最新头像
       if (username === currentUser.value) {
         const userAvatar = localStorage.getItem('avatar');
@@ -1301,6 +1318,61 @@ const loadUserProfile = async (username: string) => {
   } catch (error) {
     console.error('获取用户资料失败：', error);
   }
+};
+
+// 加载关注状态
+const loadFollowStatus = async (userId: number) => {
+  if (!userId || !currentUserId.value) return;
+  try {
+    const fanRes = await axios.get('http://localhost:8080/api/follow/follower-count', {
+      params: { userId }
+    });
+    if (fanRes.data && fanRes.data.code === 200) {
+      profileFanCount.value = fanRes.data.data || 0;
+    }
+    
+    const statusRes = await axios.get('http://localhost:8080/api/follow/status', {
+      params: { followerId: currentUserId.value, followedId: userId }
+    });
+    if (statusRes.data && statusRes.data.code === 200) {
+      isProfileFollowing.value = statusRes.data.data || false;
+    }
+  } catch (error) {
+    console.error('加载关注状态失败：', error);
+  }
+};
+
+// 切换关注/取消关注
+const toggleFollow = async () => {
+  if (!currentUserId.value || !profileUserId.value) {
+    ElMessage.warning('参数错误');
+    return;
+  }
+  try {
+    const res = await axios.post('http://localhost:8080/api/follow/toggle', {
+      followerId: currentUserId.value,
+      followedId: profileUserId.value
+    });
+    if (res.data && res.data.code === 200) {
+      isProfileFollowing.value = !isProfileFollowing.value;
+      if (isProfileFollowing.value) {
+        profileFanCount.value++;
+      } else {
+        profileFanCount.value--;
+      }
+      ElMessage.success(isProfileFollowing.value ? '关注成功' : '已取消关注');
+    } else {
+      ElMessage.warning(res.data.msg || '操作失败');
+    }
+  } catch (error) {
+    console.error('关注操作失败：', error);
+    ElMessage.error('操作失败，请重试');
+  }
+};
+
+// 跳转到私信页面
+const goToDM = (username: string) => {
+  router.push(`/chat?user=${username}`);
 };
 
 // 处理从消息通知跳转：定位到指定帖子和评论
@@ -1356,6 +1428,20 @@ onMounted(async () => {
     currentUser.value = username;
   }
   console.log('页面加载时的当前用户:', currentUser.value);
+  
+  // 获取当前用户ID
+  if (username) {
+    try {
+      const profileRes = await axios.post('http://localhost:8080/api/user/profile', {
+        username: username
+      });
+      if (profileRes.data && profileRes.data.code === 200) {
+        currentUserId.value = profileRes.data.data.id || 0;
+      }
+    } catch (e) {
+      console.error('获取当前用户ID失败：', e);
+    }
+  }
   
   // 检查用户是否为管理员
   checkAdmin();
@@ -1818,6 +1904,33 @@ onMounted(async () => {
 
 .submit-btn:hover {
   background: #ff5252;
+}
+
+/* 关注/私信按钮样式 */
+.follow-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.follow-btn:hover {
+  background: #45a049;
+}
+
+.follow-btn.following {
+  background: #999;
+}
+
+.follow-btn.following:hover {
+  background: #888;
+}
+
+.dm-btn {
+  background: #2196f3;
+  color: white;
+}
+
+.dm-btn:hover {
+  background: #1976d2;
 }
 
 /* 评论区样式 */

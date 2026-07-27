@@ -151,6 +151,15 @@
           </div>
         </div>
       </div>
+
+      <!-- 底部分页 -->
+      <div class="comment-pagination-bottom" v-if="commentTotalPages > 1">
+        <button @click="commentCurrentPage = 1" class="page-btn" :disabled="commentCurrentPage === 1">首页</button>
+        <button @click="commentCurrentPage = commentCurrentPage - 1" class="page-btn" :disabled="commentCurrentPage === 1">上一页</button>
+        <span class="page-info">{{ commentCurrentPage }} / {{ commentTotalPages }}</span>
+        <button @click="commentCurrentPage = commentCurrentPage + 1" class="page-btn" :disabled="commentCurrentPage === commentTotalPages">下一页</button>
+        <button @click="commentCurrentPage = commentTotalPages" class="page-btn" :disabled="commentCurrentPage === commentTotalPages">尾页</button>
+      </div>
     </div>
 
     <!-- 用户资料弹窗 -->
@@ -201,9 +210,15 @@
               <span class="profile-label">签名：</span>
               <span class="profile-value">{{ selectedUser.signature || '未设置' }}</span>
             </div>
+            <div class="profile-item">
+              <span class="profile-label">粉丝：</span>
+              <span class="profile-value">{{ profileFanCount }}</span>
+            </div>
           </div>
         </div>
         <div class="dialog-footer">
+          <button @click="toggleFollow" class="btn follow-btn" :class="{ following: isProfileFollowing }">{{ isProfileFollowing ? '已关注' : '关注' }}</button>
+          <button v-if="selectedUser.username !== currentUser" @click="goToDM(selectedUser.username)" class="btn dm-btn">私信</button>
           <button @click="closeUserProfile" class="btn cancel-btn">关闭</button>
         </div>
       </div>
@@ -351,6 +366,12 @@ const selectedUser = ref({
 // 显示头像预览弹窗
 const showAvatarPreviewModal = ref(false);
 
+// 用户关注相关
+const profileFanCount = ref(0);
+const isProfileFollowing = ref(false);
+const profileUserId = ref(0);
+const currentUserId = ref(Number(localStorage.getItem('userId') || '0'));
+
 // 记录观看历史
 const recordWatchHistory = async function() {
   try {
@@ -404,14 +425,27 @@ onMounted(async function() {
     await nextTick();
     const targetCommentId = Number(commentId);
     const sortedList = sortedComments.value;
-    const commentIndex = sortedList.findIndex(function(c) { return c.id === targetCommentId; });
+    let parentCommentId = targetCommentId;
+    // 先在顶层评论中查找
+    let commentIndex = sortedList.findIndex(function(c) { return c.id === targetCommentId; });
+    // 如果没找到，可能是回复，在回复中查找其父评论
+    if (commentIndex === -1) {
+      for (let i = 0; i < sortedList.length; i++) {
+        const c = sortedList[i];
+        if (c.replies && c.replies.some(function(r: any) { return r.id === targetCommentId; })) {
+          parentCommentId = c.id;
+          commentIndex = i;
+          break;
+        }
+      }
+    }
     if (commentIndex !== -1) {
       // 计算目标评论所在页码
       const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
       commentCurrentPage.value = targetPage;
       await nextTick();
-      // 滚动到目标评论并高亮
-      const commentEl = document.getElementById('comment-' + targetCommentId);
+      // 滚动到父评论并高亮
+      const commentEl = document.getElementById('comment-' + parentCommentId);
       if (commentEl) {
         commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         commentEl.classList.add('highlight');
@@ -898,6 +932,10 @@ const pagedComments = computed(function() {
 const goToUserProfile = async function(username: string) {
   // 加载用户资料
   await loadUserProfile(username);
+  // 加载关注状态
+  if (profileUserId.value) {
+    await loadFollowStatus(profileUserId.value);
+  }
   // 显示弹窗
   showUserProfile.value = true;
 };
@@ -980,6 +1018,7 @@ const loadUserProfile = async function(username: string) {
     
     if (res.data && res.data.code === 200) {
       const userData = res.data.data;
+      profileUserId.value = userData.id || 0;
       selectedUser.value = {
         username: userData.username,
         role: userData.role.toString(),
@@ -1003,6 +1042,55 @@ const loadUserProfile = async function(username: string) {
   } catch (error) {
     console.error('获取用户资料失败：', error);
   }
+};
+
+// 加载关注状态
+const loadFollowStatus = async function(userId: number) {
+  try {
+    // 获取粉丝数
+    const countRes = await axios.get('/api/follow/follower-count?userId=' + userId);
+    if (countRes.data && countRes.data.code === 200) {
+      profileFanCount.value = countRes.data.data || 0;
+    }
+    // 获取关注状态
+    if (currentUserId.value) {
+      const statusRes = await axios.get('/api/follow/status?followerId=' + currentUserId.value + '&followedId=' + userId);
+      if (statusRes.data && statusRes.data.code === 200) {
+        isProfileFollowing.value = statusRes.data.data || false;
+      }
+    }
+  } catch (error) {
+    console.error('加载关注状态失败：', error);
+  }
+};
+
+// 切换关注/取消关注
+const toggleFollow = async function() {
+  if (!currentUserId.value) {
+    ElMessage.warning('请先登录');
+    return;
+  }
+  try {
+    const res = await axios.post('/api/follow/toggle', {
+      followerId: currentUserId.value,
+      followedId: profileUserId.value
+    });
+    if (res.data && res.data.code === 200) {
+      isProfileFollowing.value = !isProfileFollowing.value;
+      profileFanCount.value += isProfileFollowing.value ? 1 : -1;
+      ElMessage.success(isProfileFollowing.value ? '关注成功！' : '已取消关注');
+    } else {
+      ElMessage.warning(res.data.msg || '操作失败');
+    }
+  } catch (error) {
+    console.error('关注操作失败：', error);
+    ElMessage.error('操作失败，请重试');
+  }
+};
+
+// 跳转到私信页面
+const goToDM = function(username: string) {
+  router.push('/chat?user=' + username);
 };
 
 // 删除评论
@@ -1252,6 +1340,17 @@ h1 {
   0% { background: #fff8e1; }
   50% { background: #fff3cd; }
   100% { background: #f9f9f9; }
+}
+
+/* 底部分页 */
+.comment-pagination-bottom {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
 }
 
 .comment-sort {
@@ -1655,6 +1754,32 @@ h1 {
 
 .cancel-btn:hover {
   background: #e0e0e0;
+}
+
+.follow-btn {
+  background: #4caf50;
+  color: #fff;
+}
+
+.follow-btn:hover {
+  background: #45a049;
+}
+
+.follow-btn.following {
+  background: #999;
+}
+
+.follow-btn.following:hover {
+  background: #777;
+}
+
+.dm-btn {
+  background: #7c4dff;
+  color: #fff;
+}
+
+.dm-btn:hover {
+  background: #651fff;
 }
 
 /* 用户资料弹窗样式 */

@@ -28,6 +28,8 @@
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'favorites' }" @click.prevent="switchTab('favorites')">我的收藏</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'ratings' }" @click.prevent="switchTab('ratings')">我的评分</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-posts' }" @click.prevent="switchTab('my-posts')">我的帖子</a></li>
+            <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-following' }" @click.prevent="switchTab('my-following')">我的关注</a></li>
+            <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-followers' }" @click.prevent="switchTab('my-followers')">我的粉丝</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" @click.prevent="handleLogout">退出登录</a></li>
           </ul>
         </div>
@@ -257,6 +259,49 @@
               </div>
             </div>
           </div>
+
+          <!-- 我的关注 -->
+          <div v-if="activeTab === 'my-following' && !isViewingOtherUser">
+            <h3>我的关注</h3>
+            <div v-if="followingLoading" class="loading">加载中...</div>
+            <div v-else-if="followingList.length === 0" class="no-history">暂无关注</div>
+            <div v-else class="follow-list">
+              <div v-for="user in followingList" :key="user.id" class="follow-item">
+                <div class="follow-info">
+                  <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
+                  <div class="follow-details">
+                    <h4>{{ user.username }}</h4>
+                    <p>{{ user.signature || '这个人很懒，什么都没写' }}</p>
+                  </div>
+                </div>
+                <div class="follow-actions">
+                  <button class="btn btn-sm btn-following" @click="unfollowUser(user.id)">已关注</button>
+                  <button class="btn btn-sm btn-primary" @click="goToDM(user.username)">私信</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 我的粉丝 -->
+          <div v-if="activeTab === 'my-followers' && !isViewingOtherUser">
+            <h3>我的粉丝</h3>
+            <div v-if="followersLoading" class="loading">加载中...</div>
+            <div v-else-if="followerList.length === 0" class="no-history">暂无粉丝</div>
+            <div v-else class="follow-list">
+              <div v-for="user in followerList" :key="user.id" class="follow-item">
+                <div class="follow-info">
+                  <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
+                  <div class="follow-details">
+                    <h4>{{ user.username }}</h4>
+                    <p>{{ user.signature || '这个人很懒，什么都没写' }}</p>
+                  </div>
+                </div>
+                <div class="follow-actions">
+                  <button class="btn btn-sm btn-primary" @click="goToDM(user.username)">私信</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -377,6 +422,12 @@ const favoritesSearch = ref('');
 const ratingsSearch = ref('');
 const myPostsSearch = ref('');
 
+// 关注和粉丝相关
+const followingList = ref<any[]>([]);
+const followerList = ref<any[]>([]);
+const followingLoading = ref(false);
+const followersLoading = ref(false);
+
 const getRoleText = (role: string) => {
   return role === 'admin' || role === '1' ? '管理员' : '普通用户';
 };
@@ -395,6 +446,12 @@ const switchTab = (tab: string) => {
   }
   if (tab === 'my-posts' && !isViewingOtherUser) {
     loadMyPosts();
+  }
+  if (tab === 'my-following' && !isViewingOtherUser) {
+    loadFollowingList();
+  }
+  if (tab === 'my-followers' && !isViewingOtherUser) {
+    loadFollowerList();
   }
 };
 
@@ -722,6 +779,66 @@ const filteredMyPosts = computed(() => {
 watch(myPostsSearch, () => {
   myPostsPage.value = 1;
 });
+
+// 加载关注列表
+const loadFollowingList = async () => {
+  followingLoading.value = true;
+  try {
+    const res = await axios.get(`http://localhost:8080/api/follow/following-list?userId=${userId.value}`);
+    if (res.data.code === 200) {
+      followingList.value = res.data.data || [];
+    } else {
+      ElMessage.error(res.data.msg || '加载关注列表失败');
+    }
+  } catch (error) {
+    console.error('加载关注列表失败:', error);
+    ElMessage.error('加载关注列表失败');
+  } finally {
+    followingLoading.value = false;
+  }
+};
+
+// 加载粉丝列表
+const loadFollowerList = async () => {
+  followersLoading.value = true;
+  try {
+    const res = await axios.get(`http://localhost:8080/api/follow/follower-list?userId=${userId.value}`);
+    if (res.data.code === 200) {
+      followerList.value = res.data.data || [];
+    } else {
+      ElMessage.error(res.data.msg || '加载粉丝列表失败');
+    }
+  } catch (error) {
+    console.error('加载粉丝列表失败:', error);
+    ElMessage.error('加载粉丝列表失败');
+  } finally {
+    followersLoading.value = false;
+  }
+};
+
+// 取消关注
+const unfollowUser = async (followedId: number) => {
+  try {
+    const res = await axios.post('http://localhost:8080/api/follow/toggle', {
+      followerId: userId.value,
+      followedId: followedId
+    });
+    if (res.data.code === 200) {
+      ElMessage.success('已取消关注');
+      loadFollowingList();
+    } else {
+      ElMessage.error(res.data.msg || '取消关注失败');
+    }
+  } catch (error) {
+    console.error('取消关注失败:', error);
+    ElMessage.error('取消关注失败');
+  }
+};
+
+// 跳转到私信
+const goToDM = (targetUsername: string) => {
+  router.push('/chat?user=' + targetUsername);
+};
 
 const handleSave = async () => {
   ElMessageBox.confirm('确定要保存个人资料修改吗？', '保存修改', {
@@ -1828,4 +1945,16 @@ onMounted(async () => {
   font-size: 14px;
   color: #ccc;
 }
+
+/* 关注/粉丝列表样式 */
+.follow-list { margin-top: 20px; max-height: 500px; overflow-y: auto; }
+.follow-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+.follow-item:hover { background-color: #f9f9f9; }
+.follow-info { display: flex; align-items: center; gap: 15px; flex: 1; }
+.follow-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+.follow-details h4 { margin: 0 0 5px 0; font-size: 16px; color: #333; }
+.follow-details p { margin: 0; color: #999; font-size: 13px; }
+.follow-actions { display: flex; gap: 8px; }
+.btn-following { background: #e0e0e0; color: #666; border: 1px solid #ddd; }
+.btn-following:hover { background: #ff6b6b; color: white; border-color: #ff6b6b; }
 </style>

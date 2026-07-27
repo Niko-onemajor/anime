@@ -28,7 +28,7 @@
           <div class="user-header-bg"></div>
           <div class="user-header-content">
             <div class="user-avatar-wrap">
-              <img :src="getImageUrl(userInfo.avatar)" :alt="userInfo.username" class="user-avatar">
+              <img :src="getImageUrl(userInfo.avatar)" :alt="userInfo.username" class="user-avatar" @click="showAvatarPreview = true">
             </div>
             <div class="user-info-main">
               <h2 class="user-name">{{ userInfo.username }}</h2>
@@ -69,7 +69,7 @@
             :key="tab.key"
             class="tab-btn"
             :class="{ active: activeTab === tab.key }"
-            @click="activeTab = tab.key"
+            @click="switchTab(tab.key)"
           >
             {{ tab.label }}
           </button>
@@ -117,13 +117,22 @@
           <div v-if="activeTab === 'watchHistory'">
             <div v-if="watchHistoryLoading" class="loading">加载中...</div>
             <div v-else-if="watchHistory.length === 0" class="empty">暂无观看记录</div>
-            <div v-else class="card-list">
-              <div v-for="item in watchHistory" :key="item.id" class="card-item" @click="goToAnime(item.anime?.id, item.episode?.episodeNumber)">
-                <img :src="getImageUrl(item.anime?.image)" :alt="item.anime?.title" class="card-img">
-                <div class="card-info">
-                  <h4>{{ item.anime?.title }}</h4>
-                  <p>第{{ item.episode?.episodeNumber || '?' }}集 · {{ formatTime(item.watchTime) }}</p>
+            <div v-else>
+              <div class="card-list">
+                <div v-for="item in pagedWatchHistory" :key="item.id" class="card-item" @click="goToAnime(item.anime?.id, item.episode?.episodeNumber)">
+                  <img :src="getImageUrl(item.anime?.image)" :alt="item.anime?.title" class="card-img">
+                  <div class="card-info">
+                    <h4>{{ item.anime?.title }}</h4>
+                    <p>第{{ item.episode?.episodeNumber || '?' }}集 · {{ formatTime(item.watchTime) }}</p>
+                  </div>
                 </div>
+              </div>
+              <div class="pagination" v-if="watchHistoryTotalPages > 1">
+                <button @click="watchHistoryPage = 1" :disabled="watchHistoryPage === 1" class="page-btn">首页</button>
+                <button @click="watchHistoryPage = watchHistoryPage - 1" :disabled="watchHistoryPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ watchHistoryPage }} / {{ watchHistoryTotalPages }}</span>
+                <button @click="watchHistoryPage = watchHistoryPage + 1" :disabled="watchHistoryPage === watchHistoryTotalPages" class="page-btn">下一页</button>
+                <button @click="watchHistoryPage = watchHistoryTotalPages" :disabled="watchHistoryPage === watchHistoryTotalPages" class="page-btn">尾页</button>
               </div>
             </div>
           </div>
@@ -132,13 +141,22 @@
           <div v-if="activeTab === 'favorites'">
             <div v-if="favoritesLoading" class="loading">加载中...</div>
             <div v-else-if="favorites.length === 0" class="empty">暂无收藏</div>
-            <div v-else class="card-list">
-              <div v-for="anime in favorites" :key="anime.id" class="card-item" @click="goToAnimeDetail(anime.id)">
-                <img :src="getImageUrl(anime.image)" :alt="anime.title" class="card-img">
-                <div class="card-info">
-                  <h4>{{ anime.title }}</h4>
-                  <p>{{ anime.genre }} · {{ anime.year }}</p>
+            <div v-else>
+              <div class="card-list">
+                <div v-for="anime in pagedFavorites" :key="anime.id" class="card-item" @click="goToAnimeDetail(anime.id)">
+                  <img :src="getImageUrl(anime.image)" :alt="anime.title" class="card-img">
+                  <div class="card-info">
+                    <h4>{{ anime.title }}</h4>
+                    <p>{{ anime.genre }} · {{ anime.year }}</p>
+                  </div>
                 </div>
+              </div>
+              <div class="pagination" v-if="favoritesTotalPages > 1">
+                <button @click="favoritesPage = 1" :disabled="favoritesPage === 1" class="page-btn">首页</button>
+                <button @click="favoritesPage = favoritesPage - 1" :disabled="favoritesPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ favoritesPage }} / {{ favoritesTotalPages }}</span>
+                <button @click="favoritesPage = favoritesPage + 1" :disabled="favoritesPage === favoritesTotalPages" class="page-btn">下一页</button>
+                <button @click="favoritesPage = favoritesTotalPages" :disabled="favoritesPage === favoritesTotalPages" class="page-btn">尾页</button>
               </div>
             </div>
           </div>
@@ -147,14 +165,23 @@
           <div v-if="activeTab === 'ratings'">
             <div v-if="ratingsLoading" class="loading">加载中...</div>
             <div v-else-if="ratings.length === 0" class="empty">暂无评分</div>
-            <div v-else class="card-list">
-              <div v-for="item in ratings" :key="item.id" class="card-item" @click="goToAnimeDetail(item.anime?.id)">
-                <img :src="getImageUrl(item.anime?.image)" :alt="item.anime?.title" class="card-img">
-                <div class="card-info">
-                  <h4>{{ item.anime?.title }}</h4>
-                  <p>{{ item.anime?.genre }} · {{ item.anime?.year }}</p>
-                  <span class="rating-badge">{{ item.rating }}分</span>
+            <div v-else>
+              <div class="card-list">
+                <div v-for="item in pagedRatings" :key="item.id" class="card-item" @click="goToAnimeDetail(item.anime?.id)">
+                  <img :src="getImageUrl(item.anime?.image)" :alt="item.anime?.title" class="card-img">
+                  <div class="card-info">
+                    <h4>{{ item.anime?.title }}</h4>
+                    <p>{{ item.anime?.genre }} · {{ item.anime?.year }}</p>
+                    <span class="rating-badge">{{ item.rating }}分</span>
+                  </div>
                 </div>
+              </div>
+              <div class="pagination" v-if="ratingsTotalPages > 1">
+                <button @click="ratingsPage = 1" :disabled="ratingsPage === 1" class="page-btn">首页</button>
+                <button @click="ratingsPage = ratingsPage - 1" :disabled="ratingsPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ ratingsPage }} / {{ ratingsTotalPages }}</span>
+                <button @click="ratingsPage = ratingsPage + 1" :disabled="ratingsPage === ratingsTotalPages" class="page-btn">下一页</button>
+                <button @click="ratingsPage = ratingsTotalPages" :disabled="ratingsPage === ratingsTotalPages" class="page-btn">尾页</button>
               </div>
             </div>
           </div>
@@ -189,13 +216,22 @@
           <div v-if="activeTab === 'following'">
             <div v-if="followingLoading" class="loading">加载中...</div>
             <div v-else-if="followingList.length === 0" class="empty">暂无关注</div>
-            <div v-else class="follow-list">
-              <div v-for="user in followingList" :key="user.id" class="follow-item" @click="goToUserHome(user.username)">
-                <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
-                <div class="follow-details">
-                  <h4>{{ user.username }}</h4>
-                  <p>{{ user.signature || '这个人很懒，什么都没写' }}</p>
+            <div v-else>
+              <div class="follow-list">
+                <div v-for="user in pagedFollowing" :key="user.id" class="follow-item" @click="goToUserHome(user.username)">
+                  <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
+                  <div class="follow-details">
+                    <h4>{{ user.username }}</h4>
+                    <p>{{ user.signature || '这个人很懒，什么都没写' }}</p>
+                  </div>
                 </div>
+              </div>
+              <div class="pagination" v-if="followingTotalPages > 1">
+                <button @click="followingPage = 1" :disabled="followingPage === 1" class="page-btn">首页</button>
+                <button @click="followingPage = followingPage - 1" :disabled="followingPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ followingPage }} / {{ followingTotalPages }}</span>
+                <button @click="followingPage = followingPage + 1" :disabled="followingPage === followingTotalPages" class="page-btn">下一页</button>
+                <button @click="followingPage = followingTotalPages" :disabled="followingPage === followingTotalPages" class="page-btn">尾页</button>
               </div>
             </div>
           </div>
@@ -204,18 +240,35 @@
           <div v-if="activeTab === 'followers'">
             <div v-if="followersLoading" class="loading">加载中...</div>
             <div v-else-if="followerList.length === 0" class="empty">暂无粉丝</div>
-            <div v-else class="follow-list">
-              <div v-for="user in followerList" :key="user.id" class="follow-item" @click="goToUserHome(user.username)">
-                <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
-                <div class="follow-details">
-                  <h4>{{ user.username }}</h4>
-                  <p>{{ user.signature || '这个人很懒，什么都没写' }}</p>
+            <div v-else>
+              <div class="follow-list">
+                <div v-for="user in pagedFollowers" :key="user.id" class="follow-item" @click="goToUserHome(user.username)">
+                  <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
+                  <div class="follow-details">
+                    <h4>{{ user.username }}</h4>
+                    <p>{{ user.signature || '这个人很懒，什么都没写' }}</p>
+                  </div>
                 </div>
+              </div>
+              <div class="pagination" v-if="followersTotalPages > 1">
+                <button @click="followersPage = 1" :disabled="followersPage === 1" class="page-btn">首页</button>
+                <button @click="followersPage = followersPage - 1" :disabled="followersPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ followersPage }} / {{ followersTotalPages }}</span>
+                <button @click="followersPage = followersPage + 1" :disabled="followersPage === followersTotalPages" class="page-btn">下一页</button>
+                <button @click="followersPage = followersTotalPages" :disabled="followersPage === followersTotalPages" class="page-btn">尾页</button>
               </div>
             </div>
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- 头像大图预览弹窗 -->
+    <div class="dialog-overlay" v-if="showAvatarPreview" @click="showAvatarPreview = false">
+      <div class="avatar-preview-container" @click.stop>
+        <button @click="showAvatarPreview = false" class="close-btn avatar-close-btn">×</button>
+        <img :src="getImageUrl(userInfo.avatar)" :alt="userInfo.username" class="avatar-preview-img">
+      </div>
     </div>
 
     <footer class="footer">
@@ -227,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
@@ -239,6 +292,7 @@ const loading = ref(true);
 const isAdmin = ref(false);
 const navUnreadCount = ref(0);
 const activeTab = ref('profile');
+const showAvatarPreview = ref(false);
 
 // 用户信息
 const userInfo = ref({
@@ -268,25 +322,64 @@ const followerList = ref<any[]>([]);
 const followingLoading = ref(false);
 const followersLoading = ref(false);
 
+// 关注分页
+const followingPage = ref(1);
+const followingPageSize = 5;
+const followingTotalPages = computed(() => Math.ceil(followingList.value.length / followingPageSize) || 1);
+const pagedFollowing = computed(() => {
+  const start = (followingPage.value - 1) * followingPageSize;
+  return followingList.value.slice(start, start + followingPageSize);
+});
+
+// 粉丝分页
+const followersPage = ref(1);
+const followersPageSize = 5;
+const followersTotalPages = computed(() => Math.ceil(followerList.value.length / followersPageSize) || 1);
+const pagedFollowers = computed(() => {
+  const start = (followersPage.value - 1) * followersPageSize;
+  return followerList.value.slice(start, start + followersPageSize);
+});
+
 // 观看记录
 const watchHistory = ref<any[]>([]);
 const watchHistoryLoading = ref(false);
+const watchHistoryPage = ref(1);
+const watchHistoryPageSize = 9;
+const watchHistoryTotalPages = computed(() => Math.ceil(watchHistory.value.length / watchHistoryPageSize) || 1);
+const pagedWatchHistory = computed(() => {
+  const start = (watchHistoryPage.value - 1) * watchHistoryPageSize;
+  return watchHistory.value.slice(start, start + watchHistoryPageSize);
+});
 
 // 收藏
 const favorites = ref<any[]>([]);
 const favoritesCount = ref(0);
 const favoritesLoading = ref(false);
+const favoritesPage = ref(1);
+const favoritesPageSize = 9;
+const favoritesTotalPages = computed(() => Math.ceil(favorites.value.length / favoritesPageSize) || 1);
+const pagedFavorites = computed(() => {
+  const start = (favoritesPage.value - 1) * favoritesPageSize;
+  return favorites.value.slice(start, start + favoritesPageSize);
+});
 
 // 评分
 const ratings = ref<any[]>([]);
 const ratingsLoading = ref(false);
+const ratingsPage = ref(1);
+const ratingsPageSize = 9;
+const ratingsTotalPages = computed(() => Math.ceil(ratings.value.length / ratingsPageSize) || 1);
+const pagedRatings = computed(() => {
+  const start = (ratingsPage.value - 1) * ratingsPageSize;
+  return ratings.value.slice(start, start + ratingsPageSize);
+});
 
 // 帖子
 const posts = ref<any[]>([]);
 const postsCount = ref(0);
 const postsLoading = ref(false);
 const postsPage = ref(1);
-const postsPageSize = 6;
+const postsPageSize = 3;
 const postsTotalPages = computed(() => Math.ceil(posts.value.length / postsPageSize) || 1);
 const pagedPosts = computed(() => {
   const start = (postsPage.value - 1) * postsPageSize;
@@ -302,6 +395,17 @@ const tabs = [
   { key: 'following', label: '关注' },
   { key: 'followers', label: '粉丝' }
 ];
+
+// 切换 tab 时重置页码并加载数据
+const switchTab = (key: string) => {
+  activeTab.value = key;
+  // 重置分页
+  if (key === 'following' && followingList.value.length === 0) {
+    loadFollowingList();
+  } else if (key === 'followers' && followerList.value.length === 0) {
+    loadFollowerList();
+  }
+};
 
 // 图片处理
 const getImageUrl = (url: string | undefined | null): string => {
@@ -370,19 +474,16 @@ const loadUserProfile = async (username: string) => {
 const loadFollowStatus = async () => {
   if (!userInfo.value.id) return;
   try {
-    // 粉丝数
     const fanRes = await axios.get('http://localhost:8080/api/follow/follower-count', {
       params: { userId: userInfo.value.id }
     });
     if (fanRes.data?.code === 200) followerCount.value = fanRes.data.data.count || 0;
 
-    // 关注数
     const followRes = await axios.get('http://localhost:8080/api/follow/following-count', {
       params: { userId: userInfo.value.id }
     });
     if (followRes.data?.code === 200) followingCount.value = followRes.data.data.count || 0;
 
-    // 当前用户是否关注了此用户
     if (currentUserId.value && currentUserId.value !== userInfo.value.id) {
       const statusRes = await axios.get('http://localhost:8080/api/follow/status', {
         params: { followerId: currentUserId.value, followedId: userInfo.value.id }
@@ -521,7 +622,8 @@ const goToDM = () => {
 };
 
 const goToUserHome = (username: string) => {
-  router.push(`/user/${username}`);
+  // 重新加载目标用户页面
+  window.location.href = `/user/${username}`;
 };
 
 const goToAnime = (animeId: number, episode: number) => {
@@ -544,7 +646,6 @@ onMounted(async () => {
     return;
   }
 
-  // 获取当前用户ID
   const curUsername = localStorage.getItem('username');
   if (curUsername) {
     try {
@@ -659,6 +760,11 @@ onMounted(async () => {
   border: 4px solid white;
   object-fit: cover;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+.user-avatar:hover {
+  transform: scale(1.05);
 }
 .user-info-main {
   flex: 1;
@@ -989,6 +1095,52 @@ onMounted(async () => {
   padding: 40px;
   color: #999;
   font-size: 15px;
+}
+
+/* 头像预览弹窗 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.avatar-preview-container {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.avatar-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  z-index: 10;
+}
+.avatar-preview-img {
+  max-width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 4px;
 }
 
 /* 底栏 */

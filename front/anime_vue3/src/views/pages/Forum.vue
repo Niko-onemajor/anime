@@ -252,41 +252,9 @@
           
           <!-- 个人资料 -->
           <div class="user-profile-info">
-            <div class="profile-item">
-              <span class="profile-label">用户名：</span>
-              <span class="profile-value">{{ selectedUser.username }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">角色：</span>
-              <span class="profile-value">{{ selectedUser.role === '1' ? '管理员' : '普通用户' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">性别：</span>
-              <span class="profile-value">{{ selectedUser.gender || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">生日：</span>
-              <span class="profile-value">{{ selectedUser.birthday || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">地区：</span>
-              <span class="profile-value">{{ selectedUser.region || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">邮箱：</span>
-              <span class="profile-value">{{ selectedUser.email || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">喜爱的动漫：</span>
-              <span class="profile-value">{{ selectedUser.favorite || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
+            <div class="profile-item signature-item">
               <span class="profile-label">签名：</span>
               <span class="profile-value">{{ selectedUser.signature || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">粉丝：</span>
-              <span class="profile-value">{{ profileFanCount }}</span>
             </div>
           </div>
         </div>
@@ -1398,10 +1366,16 @@ const handleNavigateToPost = async (postId: number, commentId: number | null) =>
 
   await nextTick();
 
-  // 滚动到帖子位置
+  // 滚动到帖子位置并高亮
   const postEl = document.getElementById('post-' + postId);
   if (postEl) {
     postEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 如果要求高亮帖子（帖子级别点赞/点踩通知）
+    const highlightPost = route.query.highlightPost === 'true';
+    if (highlightPost) {
+      postEl.classList.add('highlight-post');
+      setTimeout(() => postEl.classList.remove('highlight-post'), 3000);
+    }
   }
 
   // 如果指定了评论ID，定位到该评论
@@ -1449,6 +1423,8 @@ const handleNavigateToPost = async (postId: number, commentId: number | null) =>
           const commentEl = document.getElementById('comment-' + parentCommentId);
           if (commentEl) {
             commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            commentEl.classList.add('highlight');
+            setTimeout(() => { commentEl.classList.remove('highlight'); }, 3000);
           }
         }, 300);
       }
@@ -2385,6 +2361,30 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+/* 评论高亮动画 */
+.comment-item.highlight {
+  animation: commentHighlight 3s ease;
+  box-shadow: 0 0 12px rgba(255, 107, 107, 0.4);
+}
+
+/* 帖子高亮动画 */
+.post-item.highlight-post {
+  animation: postHighlight 3s ease;
+  box-shadow: 0 0 16px rgba(255, 107, 107, 0.5);
+}
+
+@keyframes commentHighlight {
+  0% { background: #fff8e1; }
+  50% { background: #fff3cd; }
+  100% { background: #f9f9f9; }
+}
+
+@keyframes postHighlight {
+  0% { background: #fff8e1; box-shadow: 0 0 20px rgba(255, 107, 107, 0.6); }
+  50% { background: #fff3cd; box-shadow: 0 0 12px rgba(255, 107, 107, 0.3); }
+  100% { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+}
+
 /* 头像预览弹窗样式 */
 .avatar-preview-container {
   position: relative;
@@ -2422,9 +2422,8 @@ onMounted(async () => {
 }
 
 .user-profile-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-item {
@@ -2432,9 +2431,16 @@ onMounted(async () => {
   align-items: flex-start;
 }
 
+.profile-item.signature-item {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
 .profile-label {
   font-weight: bold;
-  width: 100px;
+  width: 60px;
   flex-shrink: 0;
   color: #333;
 }

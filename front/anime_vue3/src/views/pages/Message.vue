@@ -324,6 +324,9 @@ const handleNotificationClick = async (notification: any) => {
     const query: any = { postId: notification.targetId };
     if (notification.subTargetId) {
       query.commentId = notification.subTargetId;
+    } else {
+      // 没有 subTargetId 说明是帖子级别的点赞/点踩，高亮帖子本身
+      query.highlightPost = 'true';
     }
     router.push({ path: '/forum', query });
   } else if (notification.targetType === 'anime' && notification.targetId) {

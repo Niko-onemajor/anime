@@ -171,41 +171,9 @@
           
           <!-- 个人资料 -->
           <div class="user-profile-info">
-            <div class="profile-item">
-              <span class="profile-label">用户名：</span>
-              <span class="profile-value">{{ selectedUser.username }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">角色：</span>
-              <span class="profile-value">{{ selectedUser.role === '1' ? '管理员' : '普通用户' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">性别：</span>
-              <span class="profile-value">{{ selectedUser.gender || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">生日：</span>
-              <span class="profile-value">{{ selectedUser.birthday || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">地区：</span>
-              <span class="profile-value">{{ selectedUser.region || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">邮箱：</span>
-              <span class="profile-value">{{ selectedUser.email || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">喜爱的动漫：</span>
-              <span class="profile-value">{{ selectedUser.favorite || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
+            <div class="profile-item signature-item">
               <span class="profile-label">签名：</span>
               <span class="profile-value">{{ selectedUser.signature || '未设置' }}</span>
-            </div>
-            <div class="profile-item">
-              <span class="profile-label">粉丝：</span>
-              <span class="profile-value">{{ profileFanCount }}</span>
             </div>
           </div>
         </div>
@@ -1902,9 +1870,8 @@ h1 {
 }
 
 .user-profile-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-item {
@@ -1912,9 +1879,16 @@ h1 {
   align-items: flex-start;
 }
 
+.profile-item.signature-item {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
 .profile-label {
   font-weight: bold;
-  width: 100px;
+  width: 60px;
   flex-shrink: 0;
   color: #333;
 }

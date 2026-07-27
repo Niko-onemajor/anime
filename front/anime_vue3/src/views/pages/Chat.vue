@@ -30,7 +30,7 @@
             @click="selectConversation(conv.userId)"
           >
             <div class="conv-avatar">
-              <img :src="conv.avatar || defaultAvatar" :alt="conv.username" />
+              <img :src="getImageUrl(conv.avatar)" :alt="conv.username" />
             </div>
             <div class="conv-info">
               <div class="conv-top">
@@ -62,7 +62,7 @@
           <!-- 聊天头部 -->
           <div class="chat-header">
             <div class="chat-header-info">
-              <img :src="activePartner?.avatar || defaultAvatar" :alt="activePartner?.username" class="chat-header-avatar" />
+              <img :src="getImageUrl(activePartner?.avatar)" :alt="activePartner?.username" class="chat-header-avatar" />
               <span class="chat-header-name">{{ activePartner?.username }}</span>
             </div>
           </div>
@@ -119,6 +119,30 @@ import { ElMessage } from 'element-plus';
 
 const route = useRoute();
 const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIyMCIgZmlsbD0iI2UwZTBlMCIvPjxjaXJjbGUgY3g9IjIwIiBjeT0iMTUiIHI9IjgiIGZpbGw9IiNjY2MiLz48ZWxsaXBzZSBjeD0iMjAiIGN5PSIzNSIgcng9IjEyIiByeT0iOCIgZmlsbD0iI2NjYyIvPjwvc3ZnPg==';
+
+const getImageUrl = (url: string): string => {
+  if (!url) return defaultAvatar;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  // 处理 file:/// 协议
+  if (url.startsWith('file:///')) {
+    const filename = url.split('/').pop() || '';
+    if (url.includes('avatars')) return `/avatars/${filename}`;
+    return `/avatars/${filename}`;
+  }
+  // 处理 Windows 绝对路径
+  if (url.includes(':')) {
+    const parts = url.split(/[\\/]/);
+    const filename = parts.pop() || '';
+    if (url.includes('avatars')) return `/avatars/${filename}`;
+    return `/avatars/${filename}`;
+  }
+  if (url.startsWith('/')) {
+    return url;
+  }
+  return `/${url}`;
+};
 
 const currentUserId = ref<number | null>(null);
 const currentUsername = ref('');

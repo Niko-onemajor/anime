@@ -134,7 +134,8 @@ public class AnimeCommentService {
                             targetUser.getUsername(),
                             fromUser.getUsername(),
                             animeTitle,
-                            comment.getAnimeId()
+                            comment.getAnimeId(),
+                            commentId
                     );
                 }
             }
@@ -195,7 +196,8 @@ public class AnimeCommentService {
                             targetUser.getUsername(),
                             fromUser.getUsername(),
                             animeTitle,
-                            comment.getAnimeId()
+                            comment.getAnimeId(),
+                            commentId
                     );
                 }
             }

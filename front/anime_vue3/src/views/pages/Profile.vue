@@ -263,10 +263,13 @@
           <!-- 我的关注 -->
           <div v-if="activeTab === 'my-following' && !isViewingOtherUser">
             <h3>我的关注</h3>
+            <div class="section-search">
+              <input type="text" v-model="followingSearch" placeholder="搜索关注用户..." class="search-input">
+            </div>
             <div v-if="followingLoading" class="loading">加载中...</div>
-            <div v-else-if="followingList.length === 0" class="no-history">暂无关注</div>
+            <div v-else-if="filteredFollowingList.length === 0" class="no-history">{{ followingSearch ? '未找到匹配的关注用户' : '暂无关注' }}</div>
             <div v-else class="follow-list">
-              <div v-for="user in followingList" :key="user.id" class="follow-item">
+              <div v-for="user in filteredFollowingList" :key="user.id" class="follow-item">
                 <div class="follow-info">
                   <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
                   <div class="follow-details">
@@ -285,10 +288,13 @@
           <!-- 我的粉丝 -->
           <div v-if="activeTab === 'my-followers' && !isViewingOtherUser">
             <h3>我的粉丝</h3>
+            <div class="section-search">
+              <input type="text" v-model="followersSearch" placeholder="搜索粉丝用户..." class="search-input">
+            </div>
             <div v-if="followersLoading" class="loading">加载中...</div>
-            <div v-else-if="followerList.length === 0" class="no-history">暂无粉丝</div>
+            <div v-else-if="filteredFollowerList.length === 0" class="no-history">{{ followersSearch ? '未找到匹配的粉丝用户' : '暂无粉丝' }}</div>
             <div v-else class="follow-list">
-              <div v-for="user in followerList" :key="user.id" class="follow-item">
+              <div v-for="user in filteredFollowerList" :key="user.id" class="follow-item">
                 <div class="follow-info">
                   <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
                   <div class="follow-details">
@@ -427,6 +433,26 @@ const followingList = ref<any[]>([]);
 const followerList = ref<any[]>([]);
 const followingLoading = ref(false);
 const followersLoading = ref(false);
+const followingSearch = ref('');
+const followersSearch = ref('');
+
+// 过滤后的关注列表
+const filteredFollowingList = computed(() => {
+  if (!followingSearch.value) return followingList.value;
+  const keyword = followingSearch.value.toLowerCase();
+  return followingList.value.filter(user =>
+    user.username.toLowerCase().includes(keyword)
+  );
+});
+
+// 过滤后的粉丝列表
+const filteredFollowerList = computed(() => {
+  if (!followersSearch.value) return followerList.value;
+  const keyword = followersSearch.value.toLowerCase();
+  return followerList.value.filter(user =>
+    user.username.toLowerCase().includes(keyword)
+  );
+});
 
 const getRoleText = (role: string) => {
   return role === 'admin' || role === '1' ? '管理员' : '普通用户';
@@ -448,9 +474,11 @@ const switchTab = (tab: string) => {
     loadMyPosts();
   }
   if (tab === 'my-following' && !isViewingOtherUser) {
+    followingSearch.value = '';
     loadFollowingList();
   }
   if (tab === 'my-followers' && !isViewingOtherUser) {
+    followersSearch.value = '';
     loadFollowerList();
   }
 };

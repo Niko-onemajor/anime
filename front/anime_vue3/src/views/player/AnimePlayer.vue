@@ -363,7 +363,7 @@ const showAvatarPreviewModal = ref(false);
 const profileFanCount = ref(0);
 const isProfileFollowing = ref(false);
 const profileUserId = ref(0);
-const currentUserId = ref(Number(localStorage.getItem('userId') || '0'));
+const currentUserId = ref(0);
 
 // 记录观看历史
 const recordWatchHistory = async function() {
@@ -392,6 +392,20 @@ onMounted(async function() {
   const id = Number(route.params.id);
   const episode = Number(route.params.episode);
   const commentId = route.query.commentId;
+
+  // 获取当前用户ID
+  const username = localStorage.getItem('username');
+  if (username) {
+    try {
+      const profileRes = await axios.post('http://localhost:8080/api/user/profile', { username });
+      if (profileRes.data && profileRes.data.code === 200) {
+        currentUserId.value = profileRes.data.data.id || 0;
+      }
+    } catch (e) {
+      console.error('获取当前用户ID失败：', e);
+    }
+  }
+
   if (id) {
     animeId.value = id;
     // 根据动漫ID获取动漫信息和集数

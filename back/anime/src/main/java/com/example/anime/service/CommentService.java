@@ -212,7 +212,8 @@ public class CommentService {
                             targetUser.getUsername(),
                             fromUser.getUsername(),
                             postTitle,
-                            comment.getPostId()
+                            comment.getPostId(),
+                            commentId
                     );
                 }
             }
@@ -273,7 +274,8 @@ public class CommentService {
                             targetUser.getUsername(),
                             fromUser.getUsername(),
                             postTitle,
-                            comment.getPostId()
+                            comment.getPostId(),
+                            commentId
                     );
                 }
             }

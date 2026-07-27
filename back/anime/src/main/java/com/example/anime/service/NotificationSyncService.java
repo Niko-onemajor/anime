@@ -138,7 +138,7 @@ public class NotificationSyncService {
                         String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
                         String message = String.format("用户 %s 赞了你在论坛帖子「%s」中的评论",
                                 fromUser.getUsername(), postTitle);
-                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "FORUM_LIKE", message, interaction.getCreateTime(), post.getId(), "forum", null);
+                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "FORUM_LIKE", message, interaction.getCreateTime(), post.getId(), "forum", interaction.getCommentId());
                     }
                 }
             }
@@ -159,7 +159,7 @@ public class NotificationSyncService {
                         String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
                         String message = String.format("用户 %s 踩了你在论坛帖子「%s」中的评论",
                                 fromUser.getUsername(), postTitle);
-                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "FORUM_DISLIKE", message, interaction.getCreateTime(), post.getId(), "forum", null);
+                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "FORUM_DISLIKE", message, interaction.getCreateTime(), post.getId(), "forum", interaction.getCommentId());
                     }
                 }
             }
@@ -201,7 +201,7 @@ public class NotificationSyncService {
                         String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
                         String message = String.format("用户 %s 赞了你在动漫「%s」中的评论",
                                 fromUser.getUsername(), animeTitle);
-                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "ANIME_LIKE", message, interaction.getCreateTime(), comment.getAnimeId(), "anime", null);
+                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "ANIME_LIKE", message, interaction.getCreateTime(), comment.getAnimeId(), "anime", interaction.getCommentId());
                     }
                 }
             }
@@ -222,7 +222,7 @@ public class NotificationSyncService {
                         String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
                         String message = String.format("用户 %s 踩了你在动漫「%s」中的评论",
                                 fromUser.getUsername(), animeTitle);
-                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "ANIME_DISLIKE", message, interaction.getCreateTime(), comment.getAnimeId(), "anime", null);
+                        createIfNotExists(targetUser.getId(), targetUser.getUsername(), "ANIME_DISLIKE", message, interaction.getCreateTime(), comment.getAnimeId(), "anime", interaction.getCommentId());
                     }
                 }
             }

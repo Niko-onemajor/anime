@@ -1400,7 +1400,25 @@ const handleNavigateToPost = async (postId: number, commentId: number | null) =>
   if (commentId) {
     const post = posts.value.find(p => p.id === postId);
     if (post && post.comments) {
-      const allComments = [...post.comments];
+      // 与 getPagedComments 保持一致的排序逻辑
+      const sortType = commentSort.value[postId] || 'time';
+      const order = commentSortOrder.value[postId] || 'desc';
+      const allComments = [...post.comments].sort((a, b) => {
+        if (sortType === 'time') {
+          const timeA = new Date(a.createTime).getTime();
+          const timeB = new Date(b.createTime).getTime();
+          return order === 'desc' ? timeB - timeA : timeA - timeB;
+        } else if (sortType === 'likes') {
+          const likesA = a.likeCount || 0;
+          const likesB = b.likeCount || 0;
+          return order === 'desc' ? likesB - likesA : likesA - likesB;
+        } else if (sortType === 'dislikes') {
+          const dislikesA = a.dislikeCount || 0;
+          const dislikesB = b.dislikeCount || 0;
+          return order === 'desc' ? dislikesB - dislikesA : dislikesA - dislikesB;
+        }
+        return 0;
+      });
       let parentCommentId = commentId;
       // 先在顶层评论中查找
       let commentIndex = allComments.findIndex((c: any) => c.id === commentId);

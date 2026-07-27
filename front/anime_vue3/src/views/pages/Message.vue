@@ -19,20 +19,18 @@
     <div class="content">
       <div class="message-header">
         <h2>我的消息</h2>
-        <div class="header-actions">
-          <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount }} 条未读</span>
-          <button v-if="unreadCount > 0" class="read-all-btn" @click="markAllAsRead">全部已读</button>
-        </div>
       </div>
 
       <!-- 分类标签 -->
       <div class="category-tabs">
         <button
           class="tab-btn"
-          :class="{ active: activeTab === 'all' }"
-          @click="activeTab = 'all'"
+          :class="{ active: activeTab === 'dm' }"
+          @click="activeTab = 'dm'"
         >
-          <span>全部</span>
+          <span class="tab-icon">✉️</span>
+          <span>私信</span>
+          <span v-if="dmUnreadCount > 0" class="tab-unread">{{ dmUnreadCount }}</span>
         </button>
         <button
           class="tab-btn"
@@ -41,6 +39,7 @@
         >
           <span class="tab-icon">💬</span>
           <span>评论</span>
+          <span v-if="commentUnreadCount > 0" class="tab-unread">{{ commentUnreadCount }}</span>
         </button>
         <button
           class="tab-btn"
@@ -49,6 +48,7 @@
         >
           <span class="tab-icon">👍</span>
           <span>点赞</span>
+          <span v-if="likeUnreadCount > 0" class="tab-unread">{{ likeUnreadCount }}</span>
         </button>
         <button
           class="tab-btn"
@@ -57,6 +57,7 @@
         >
           <span class="tab-icon">👎</span>
           <span>点踩</span>
+          <span v-if="dislikeUnreadCount > 0" class="tab-unread">{{ dislikeUnreadCount }}</span>
         </button>
         <button class="clear-all-btn" @click="handleClearAll" title="一键清除全部未读消息">
           🗑️
@@ -87,14 +88,14 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-else-if="filteredNotifications.length === 0" class="empty-container">
-        <p class="empty-text">{{ activeTab === 'all' ? '暂无消息' : activeTab === 'comment' ? '暂无评论消息' : activeTab === 'like' ? '暂无点赞消息' : '暂无点踩消息' }}</p>
+      <div v-else-if="currentPageData.length === 0" class="empty-container">
+        <p class="empty-text">{{ emptyText }}</p>
       </div>
 
       <!-- 通知列表 -->
       <div v-else class="notification-list">
         <div
-          v-for="notification in filteredNotifications"
+          v-for="notification in currentPageData"
           :key="notification.id"
           class="notification-item"
           :class="{ unread: !notification.isRead }"
@@ -107,7 +108,7 @@
             <span v-else-if="notification.type === 'ANIME_REPLY'" class="icon-reply">💬</span>
             <span v-else-if="notification.type === 'ANIME_LIKE'" class="icon-like">👍</span>
             <span v-else-if="notification.type === 'ANIME_DISLIKE'" class="icon-dislike">👎</span>
-            <span v-else class="icon-default">🔔</span>
+            <span v-else class="icon-default">✉️</span>
           </div>
           <div class="notification-content">
             <span v-if="getTypeLabel(notification.type)" class="notification-type">{{ getTypeLabel(notification.type) }}</span>
@@ -116,6 +117,15 @@
           </div>
           <div v-if="!notification.isRead" class="unread-dot"></div>
         </div>
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination" v-if="totalPages > 1">
+        <button @click="goToPage(1)" class="page-btn" :disabled="currentPage === 1">首页</button>
+        <button @click="goToPage(currentPage - 1)" class="page-btn" :disabled="currentPage === 1">上一页</button>
+        <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+        <button @click="goToPage(currentPage + 1)" class="page-btn" :disabled="currentPage === totalPages">下一页</button>
+        <button @click="goToPage(totalPages)" class="page-btn" :disabled="currentPage === totalPages">尾页</button>
       </div>
     </div>
 
@@ -129,22 +139,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/utils/api';
 
 const router = useRouter();
 const isAdmin = ref(false);
 const isLoading = ref(true);
-const activeTab = ref('all');
+const activeTab = ref('dm');
 const navUnreadCount = ref(0);
 const notifications = ref<any[]>([]);
-const unreadCount = ref(0);
 const showClearConfirm = ref(false);
+const currentPage = ref(1);
+const pageSize = 6;
 
 const filteredNotifications = computed(() => {
-  if (activeTab.value === 'all') {
-    return notifications.value;
+  if (activeTab.value === 'dm') {
+    return notifications.value.filter(n =>
+      n.type !== 'FORUM_REPLY' && n.type !== 'FORUM_LIKE' && n.type !== 'FORUM_DISLIKE' &&
+      n.type !== 'ANIME_REPLY' && n.type !== 'ANIME_LIKE' && n.type !== 'ANIME_DISLIKE'
+    );
   } else if (activeTab.value === 'comment') {
     return notifications.value.filter(n => n.type === 'FORUM_REPLY' || n.type === 'ANIME_REPLY');
   } else if (activeTab.value === 'like') {
@@ -152,6 +166,54 @@ const filteredNotifications = computed(() => {
   } else {
     return notifications.value.filter(n => n.type === 'FORUM_DISLIKE' || n.type === 'ANIME_DISLIKE');
   }
+});
+
+const totalPages = computed(() => Math.ceil(filteredNotifications.value.length / pageSize) || 1);
+
+const currentPageData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredNotifications.value.slice(start, start + pageSize);
+});
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+// 各分类未读数
+const dmUnreadCount = computed(() =>
+  notifications.value.filter(n =>
+    !n.isRead && n.type !== 'FORUM_REPLY' && n.type !== 'FORUM_LIKE' && n.type !== 'FORUM_DISLIKE' &&
+    n.type !== 'ANIME_REPLY' && n.type !== 'ANIME_LIKE' && n.type !== 'ANIME_DISLIKE'
+  ).length
+);
+
+const commentUnreadCount = computed(() =>
+  notifications.value.filter(n => !n.isRead && (n.type === 'FORUM_REPLY' || n.type === 'ANIME_REPLY')).length
+);
+
+const likeUnreadCount = computed(() =>
+  notifications.value.filter(n => !n.isRead && (n.type === 'FORUM_LIKE' || n.type === 'ANIME_LIKE')).length
+);
+
+const dislikeUnreadCount = computed(() =>
+  notifications.value.filter(n => !n.isRead && (n.type === 'FORUM_DISLIKE' || n.type === 'ANIME_DISLIKE')).length
+);
+
+const emptyText = computed(() => {
+  const map: Record<string, string> = {
+    dm: '暂无私信',
+    comment: '暂无评论消息',
+    like: '暂无点赞消息',
+    dislike: '暂无点踩消息'
+  };
+  return map[activeTab.value] || '暂无消息';
+});
+
+// 切换 tab 时重置页码
+watch(activeTab, () => {
+  currentPage.value = 1;
 });
 
 const checkAdmin = () => {
@@ -173,7 +235,6 @@ const loadNotifications = async () => {
     });
     if (response.data.code === 200) {
       notifications.value = response.data.data || [];
-      unreadCount.value = response.data.unreadCount || 0;
       navUnreadCount.value = response.data.unreadCount || 0;
     }
   } catch (error) {
@@ -189,7 +250,6 @@ const handleNotificationClick = async (notification: any) => {
     try {
       await api.post('/api/notifications/read', { id: notification.id });
       notification.isRead = true;
-      unreadCount.value = Math.max(0, unreadCount.value - 1);
       navUnreadCount.value = Math.max(0, navUnreadCount.value - 1);
     } catch (error) {
       console.error('标记已读失败:', error);
@@ -204,7 +264,11 @@ const handleNotificationClick = async (notification: any) => {
     }
     router.push({ path: '/forum', query });
   } else if (notification.targetType === 'anime' && notification.targetId) {
-    router.push({ path: `/anime/${notification.targetId}` });
+    const query: any = {};
+    if (notification.subTargetId) {
+      query.commentId = notification.subTargetId;
+    }
+    router.push({ path: `/anime/${notification.targetId}/play/1`, query });
   }
 };
 
@@ -218,7 +282,6 @@ const confirmClearAll = async () => {
   try {
     await api.post('/api/notifications/read-all', { username });
     notifications.value.forEach(n => n.isRead = true);
-    unreadCount.value = 0;
     navUnreadCount.value = 0;
   } catch (error) {
     console.error('全部已读失败:', error);
@@ -247,7 +310,6 @@ const formatTime = (time: string) => {
   return `${y}-${m}-${d} ${h}:${min}`;
 };
 
-// 获取通知类型标签
 const getTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     FORUM_REPLY: '论坛回复',
@@ -358,36 +420,6 @@ onMounted(() => {
   margin: 0;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.unread-badge {
-  background: #ff6b6b;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-}
-
-.read-all-btn {
-  padding: 6px 16px;
-  background: white;
-  border: 1px solid #ff6b6b;
-  color: #ff6b6b;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.read-all-btn:hover {
-  background: #ff6b6b;
-  color: white;
-}
-
 /* 分类标签 */
 .category-tabs {
   display: flex;
@@ -407,6 +439,7 @@ onMounted(() => {
   font-size: 15px;
   cursor: pointer;
   transition: all 0.3s;
+  position: relative;
 }
 
 .tab-btn:hover {
@@ -420,9 +453,28 @@ onMounted(() => {
   color: white;
 }
 
+.tab-btn.active .tab-unread {
+  background: white;
+  color: #ff6b6b;
+}
+
 .tab-icon {
   font-size: 18px;
   line-height: 1;
+}
+
+.tab-unread {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ff4757;
+  color: white;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: bold;
 }
 
 .clear-all-btn {
@@ -570,6 +622,43 @@ onMounted(() => {
   flex-shrink: 0;
   margin-top: 8px;
   margin-left: 8px;
+}
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 0;
+}
+
+.page-btn {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #666;
+  padding: 0 8px;
 }
 
 /* 底栏 */

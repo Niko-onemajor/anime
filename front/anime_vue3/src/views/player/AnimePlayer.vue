@@ -70,11 +70,18 @@
             切换
           </button>
         </div>
+        <div class="comment-pagination" v-if="commentTotalPages > 1">
+          <button @click="commentCurrentPage = 1" class="page-btn" :disabled="commentCurrentPage === 1">首页</button>
+          <button @click="commentCurrentPage = commentCurrentPage - 1" class="page-btn" :disabled="commentCurrentPage === 1">上一页</button>
+          <span class="page-info">{{ commentCurrentPage }} / {{ commentTotalPages }}</span>
+          <button @click="commentCurrentPage = commentCurrentPage + 1" class="page-btn" :disabled="commentCurrentPage === commentTotalPages">下一页</button>
+          <button @click="commentCurrentPage = commentTotalPages" class="page-btn" :disabled="commentCurrentPage === commentTotalPages">尾页</button>
+        </div>
       </div>
       
       <!-- 评论列表 -->
       <div class="comments-list">
-        <div v-for="comment in sortedComments" :key="comment.id" class="comment-item">
+        <div v-for="comment in pagedComments" :key="comment.id" class="comment-item" :id="'comment-' + comment.id">
           <div class="comment-header">
             <div class="comment-author">
               <img :src="getImageUrl(comment.authorAvatar)" :alt="comment.authorName || '未知用户'" class="author-avatar" @click="goToUserProfile(comment.authorName)" style="cursor: pointer;">
@@ -220,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { ElMessageBox, ElMessage } from 'element-plus';
@@ -320,6 +327,10 @@ const replySortOptions = [
 const selectedCommentSort = ref('time');
 const commentSortOrder = ref('desc'); // desc: 降序, asc: 升序
 
+// 评论分页
+const commentCurrentPage = ref(1);
+const commentsPerPage = 6;
+
 // 当前用户
 const currentUser = ref(localStorage.getItem('username') || 'user1');
 
@@ -363,15 +374,16 @@ const recordWatchHistory = async function() {
 };
 
 // 从路由参数获取动漫ID和集数
-onMounted(function() {
+onMounted(async function() {
   const id = Number(route.params.id);
   const episode = Number(route.params.episode);
+  const commentId = route.query.commentId;
   if (id) {
     animeId.value = id;
     // 根据动漫ID获取动漫信息和集数
     getAnimeInfo(id);
-    // 加载评论
-    loadComments(id);
+    // 加载评论（等待完成以便后续定位）
+    await loadComments(id);
     // 获取用户评分
     getUserRating(id);
   }
@@ -386,6 +398,27 @@ onMounted(function() {
   
   // 记录观看历史
   setTimeout(recordWatchHistory, 1000);
+  
+  // 从消息页跳转过来时定位到对应评论
+  if (commentId) {
+    await nextTick();
+    const targetCommentId = Number(commentId);
+    const sortedList = sortedComments.value;
+    const commentIndex = sortedList.findIndex(function(c) { return c.id === targetCommentId; });
+    if (commentIndex !== -1) {
+      // 计算目标评论所在页码
+      const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
+      commentCurrentPage.value = targetPage;
+      await nextTick();
+      // 滚动到目标评论并高亮
+      const commentEl = document.getElementById('comment-' + targetCommentId);
+      if (commentEl) {
+        commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        commentEl.classList.add('highlight');
+        setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
+      }
+    }
+  }
 });
 
 // 监听路由参数变化
@@ -852,6 +885,15 @@ const sortedComments = computed(function() {
   return sorted;
 });
 
+const commentTotalPages = computed(function() {
+  return Math.ceil(sortedComments.value.length / commentsPerPage) || 1;
+});
+
+const pagedComments = computed(function() {
+  const start = (commentCurrentPage.value - 1) * commentsPerPage;
+  return sortedComments.value.slice(start, start + commentsPerPage);
+});
+
 // 打开用户资料弹窗
 const goToUserProfile = async function(username: string) {
   // 加载用户资料
@@ -1157,11 +1199,59 @@ h1 {
 /* 评论控制栏 */
 .comment-controls {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 1px solid #eee;
+}
+
+/* 评论分页 */
+.comment-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-btn {
+  padding: 5px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 13px;
+  color: #666;
+  padding: 0 4px;
+}
+
+/* 评论高亮动画 */
+.comment-item.highlight {
+  animation: commentHighlight 3s ease;
+  box-shadow: 0 0 12px rgba(255, 107, 107, 0.4);
+}
+
+@keyframes commentHighlight {
+  0% { background: #fff8e1; }
+  50% { background: #fff3cd; }
+  100% { background: #f9f9f9; }
 }
 
 .comment-sort {

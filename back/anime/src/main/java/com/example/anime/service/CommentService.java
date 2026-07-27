@@ -62,7 +62,9 @@ public class CommentService {
                             targetUser.getUsername(),
                             fromUser.getUsername(),
                             postTitle,
-                            content
+                            content,
+                            postId,
+                            savedComment.getId()
                     );
                 }
             }
@@ -78,7 +80,9 @@ public class CommentService {
                             post.getAuthor().getUsername(),
                             fromUser.getUsername(),
                             postTitle,
-                            content
+                            content,
+                            postId,
+                            savedComment.getId()
                     );
                 }
             }
@@ -207,7 +211,8 @@ public class CommentService {
                             targetUser.getId(),
                             targetUser.getUsername(),
                             fromUser.getUsername(),
-                            postTitle
+                            postTitle,
+                            comment.getPostId()
                     );
                 }
             }
@@ -267,7 +272,8 @@ public class CommentService {
                             targetUser.getId(),
                             targetUser.getUsername(),
                             fromUser.getUsername(),
-                            postTitle
+                            postTitle,
+                            comment.getPostId()
                     );
                 }
             }

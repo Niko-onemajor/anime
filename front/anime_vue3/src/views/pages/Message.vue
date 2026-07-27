@@ -58,9 +58,26 @@
           <span class="tab-icon">👎</span>
           <span>点踩</span>
         </button>
-        <button class="clear-all-btn" @click="clearAllNotifications" title="一键清除全部消息">
+        <button class="clear-all-btn" @click="handleClearAll" title="一键清除全部未读消息">
           🗑️
         </button>
+      </div>
+
+      <!-- 二次确认弹窗 -->
+      <div v-if="showClearConfirm" class="modal-overlay" @click.self="showClearConfirm = false">
+        <div class="confirm-modal">
+          <div class="confirm-header">
+            <h3>确认清除</h3>
+          </div>
+          <div class="confirm-body">
+            <p>确定要清除全部未读消息吗？</p>
+            <p class="confirm-hint">清除后所有消息将标记为已读，导航栏未读角标将消失。</p>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-cancel-btn" @click="showClearConfirm = false">取消</button>
+            <button class="confirm-ok-btn" @click="confirmClearAll">确认清除</button>
+          </div>
+        </div>
       </div>
 
       <!-- 加载状态 -->
@@ -81,7 +98,7 @@
           :key="notification.id"
           class="notification-item"
           :class="{ unread: !notification.isRead }"
-          @click="markAsRead(notification)"
+          @click="handleNotificationClick(notification)"
         >
           <div class="notification-icon">
             <span v-if="notification.type === 'FORUM_REPLY'" class="icon-reply">💬</span>
@@ -113,14 +130,17 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import api from '@/utils/api';
 
+const router = useRouter();
 const isAdmin = ref(false);
 const isLoading = ref(true);
 const activeTab = ref('all');
 const navUnreadCount = ref(0);
 const notifications = ref<any[]>([]);
 const unreadCount = ref(0);
+const showClearConfirm = ref(false);
 
 const filteredNotifications = computed(() => {
   if (activeTab.value === 'all') {
@@ -163,18 +183,37 @@ const loadNotifications = async () => {
   }
 };
 
-const markAsRead = async (notification: any) => {
-  if (notification.isRead) return;
-  try {
-    await api.post('/api/notifications/read', { id: notification.id });
-    notification.isRead = true;
-    unreadCount.value = Math.max(0, unreadCount.value - 1);
-  } catch (error) {
-    console.error('标记已读失败:', error);
+const handleNotificationClick = async (notification: any) => {
+  // 先标记已读
+  if (!notification.isRead) {
+    try {
+      await api.post('/api/notifications/read', { id: notification.id });
+      notification.isRead = true;
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
+      navUnreadCount.value = Math.max(0, navUnreadCount.value - 1);
+    } catch (error) {
+      console.error('标记已读失败:', error);
+    }
+  }
+
+  // 根据通知类型跳转到对应页面
+  if (notification.targetType === 'forum' && notification.targetId) {
+    const query: any = { postId: notification.targetId };
+    if (notification.subTargetId) {
+      query.commentId = notification.subTargetId;
+    }
+    router.push({ path: '/forum', query });
+  } else if (notification.targetType === 'anime' && notification.targetId) {
+    router.push({ path: `/anime/${notification.targetId}` });
   }
 };
 
-const markAllAsRead = async () => {
+const handleClearAll = () => {
+  showClearConfirm.value = true;
+};
+
+const confirmClearAll = async () => {
+  showClearConfirm.value = false;
   const username = localStorage.getItem('username') || sessionStorage.getItem('username');
   try {
     await api.post('/api/notifications/read-all', { username });
@@ -183,18 +222,6 @@ const markAllAsRead = async () => {
     navUnreadCount.value = 0;
   } catch (error) {
     console.error('全部已读失败:', error);
-  }
-};
-
-const clearAllNotifications = async () => {
-  const username = localStorage.getItem('username') || sessionStorage.getItem('username');
-  try {
-    await api.post('/api/notifications/clear-all', { username });
-    notifications.value = [];
-    unreadCount.value = 0;
-    navUnreadCount.value = 0;
-  } catch (error) {
-    console.error('清除全部通知失败:', error);
   }
 };
 
@@ -582,5 +609,94 @@ onMounted(() => {
   .content {
     padding: 0 15px;
   }
+}
+
+/* 确认弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirm-modal {
+  background: white;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.confirm-header {
+  padding: 20px 24px 0;
+}
+
+.confirm-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.confirm-body {
+  padding: 16px 24px 24px;
+}
+
+.confirm-body p {
+  margin: 0;
+  font-size: 15px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.confirm-hint {
+  margin-top: 8px !important;
+  font-size: 13px !important;
+  color: #999 !important;
+}
+
+.confirm-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+}
+
+.confirm-cancel-btn {
+  padding: 8px 20px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-cancel-btn:hover {
+  background: #f0f0f0;
+}
+
+.confirm-ok-btn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #ff6b6b;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-ok-btn:hover {
+  background: #e55a5a;
 }
 </style>

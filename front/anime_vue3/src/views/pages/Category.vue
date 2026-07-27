@@ -18,7 +18,7 @@
     <!-- 搜索栏 -->
     <div class="search-container">
       <div class="search-box">
-        <input type="text" v-model="searchKeyword" placeholder="搜索动漫..." class="search-input">
+        <input type="text" v-model="searchKeyword" placeholder="搜索动漫标题或类型..." class="search-input">
         <button @click="handleSearch" class="search-btn">搜索</button>
       </div>
     </div>
@@ -362,7 +362,6 @@ const filteredAnimes = computed(() => {
     const keyword = searchKeyword.value.toLowerCase();
     result = result.filter(anime => 
       anime.title.toLowerCase().includes(keyword) || 
-      anime.description.toLowerCase().includes(keyword) ||
       anime.genre.toLowerCase().includes(keyword)
     );
   }

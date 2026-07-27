@@ -40,7 +40,7 @@
 
     <!-- 帖子列表 -->
     <div class="post-container">
-      <div class="post-item" v-for="post in pagedPosts" :key="post.id">
+      <div class="post-item" v-for="post in pagedPosts" :key="post.id" :id="'post-' + post.id">
         <div class="post-header">
           <div class="post-author">
             <img :src="getImageUrl(post.authorAvatar)" :alt="post.authorName" class="author-avatar" @click="goToUserProfile(post.authorName)" style="cursor: pointer;">
@@ -153,7 +153,7 @@
               </div>
             </div>
             <div class="comments-list">
-              <div v-for="comment in getSortedAndPagedComments(post.id)" :key="comment.id" class="comment-item">
+              <div v-for="comment in getSortedAndPagedComments(post.id)" :key="comment.id" class="comment-item" :id="'comment-' + comment.id">
                 <div class="comment-author">
                   <img :src="getImageUrl(comment.authorAvatar)" :alt="comment.authorName" class="comment-avatar" @click="goToUserProfile(comment.authorName)" style="cursor: pointer;">
                   <div class="comment-info">
@@ -310,10 +310,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineComponent, h } from 'vue';
+import { ref, computed, onMounted, defineComponent, h, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
 import { ElMessageBox, ElMessage } from 'element-plus';
+
+const route = useRoute();
 
 // 处理图片URL
 const getImageUrl = (url: string | undefined | null): string => {
@@ -1300,6 +1303,52 @@ const loadUserProfile = async (username: string) => {
   }
 };
 
+// 处理从消息通知跳转：定位到指定帖子和评论
+const handleNavigateToPost = async (postId: number, commentId: number | null) => {
+  // 找到目标帖子
+  const targetPost = posts.value.find(p => p.id === postId);
+  if (!targetPost) {
+    console.log('未找到目标帖子:', postId);
+    return;
+  }
+
+  // 展开评论区并加载评论
+  if (!showComments.value[postId]) {
+    showComments.value[postId] = true;
+    await loadComments(postId);
+  }
+
+  await nextTick();
+
+  // 滚动到帖子位置
+  const postEl = document.getElementById('post-' + postId);
+  if (postEl) {
+    postEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // 如果指定了评论ID，定位到该评论
+  if (commentId) {
+    // 在评论列表中找到目标评论，计算页码
+    const post = posts.value.find(p => p.id === postId);
+    if (post && post.comments) {
+      const allComments = [...post.comments];
+      const commentIndex = allComments.findIndex((c: any) => c.id === commentId);
+      if (commentIndex !== -1) {
+        const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
+        commentCurrentPage.value[postId] = targetPage;
+        await nextTick();
+        // 滚动到评论
+        setTimeout(() => {
+          const commentEl = document.getElementById('comment-' + commentId);
+          if (commentEl) {
+            commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+      }
+    }
+  }
+};
+
 // 页面加载时获取用户信息和帖子数据
 onMounted(async () => {
   const username = localStorage.getItem('username');
@@ -1325,6 +1374,13 @@ onMounted(async () => {
       }
     }
   });
+
+  // 处理从消息通知跳转过来的定位
+  const targetPostId = route.query.postId;
+  const targetCommentId = route.query.commentId;
+  if (targetPostId) {
+    await handleNavigateToPost(Number(targetPostId), targetCommentId ? Number(targetCommentId) : null);
+  }
 });
 </script>
 

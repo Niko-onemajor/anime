@@ -58,7 +58,9 @@ public class AnimeCommentService {
                             targetUser.getUsername(),
                             fromUser.getUsername(),
                             animeTitle,
-                            content
+                            content,
+                            animeId,
+                            savedComment.getId()
                     );
                 }
             }
@@ -131,7 +133,8 @@ public class AnimeCommentService {
                             targetUser.getId(),
                             targetUser.getUsername(),
                             fromUser.getUsername(),
-                            animeTitle
+                            animeTitle,
+                            comment.getAnimeId()
                     );
                 }
             }
@@ -191,7 +194,8 @@ public class AnimeCommentService {
                             targetUser.getId(),
                             targetUser.getUsername(),
                             fromUser.getUsername(),
-                            animeTitle
+                            animeTitle,
+                            comment.getAnimeId()
                     );
                 }
             }

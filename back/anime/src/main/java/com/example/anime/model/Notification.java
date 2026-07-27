@@ -30,4 +30,13 @@ public class Notification {
     @Column(name = "create_time", nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date createTime = new Date();
+
+    @Column(name = "target_id")
+    private Long targetId;
+
+    @Column(name = "target_type", length = 20)
+    private String targetType;
+
+    @Column(name = "sub_target_id")
+    private Long subTargetId;
 }

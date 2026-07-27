@@ -308,7 +308,8 @@ public class PostService {
             author.getId(),
             author.getUsername(),
             fromUser.getUsername(),
-            post.getTitle()
+            post.getTitle(),
+            post.getId()
         );
     }
 
@@ -324,7 +325,8 @@ public class PostService {
             author.getId(),
             author.getUsername(),
             fromUser.getUsername(),
-            post.getTitle()
+            post.getTitle(),
+            post.getId()
         );
     }
 }

@@ -50,6 +50,14 @@
           <span class="tab-icon">👍</span>
           <span>点赞</span>
         </button>
+        <button
+          class="tab-btn"
+          :class="{ active: activeTab === 'dislike' }"
+          @click="activeTab = 'dislike'"
+        >
+          <span class="tab-icon">👎</span>
+          <span>点踩</span>
+        </button>
       </div>
 
       <!-- 加载状态 -->
@@ -60,7 +68,7 @@
 
       <!-- 空状态 -->
       <div v-else-if="filteredNotifications.length === 0" class="empty-container">
-        <p class="empty-text">{{ activeTab === 'all' ? '暂无消息' : activeTab === 'comment' ? '暂无评论消息' : '暂无点赞消息' }}</p>
+        <p class="empty-text">{{ activeTab === 'all' ? '暂无消息' : activeTab === 'comment' ? '暂无评论消息' : activeTab === 'like' ? '暂无点赞消息' : '暂无点踩消息' }}</p>
       </div>
 
       <!-- 通知列表 -->
@@ -75,8 +83,10 @@
           <div class="notification-icon">
             <span v-if="notification.type === 'FORUM_REPLY'" class="icon-reply">💬</span>
             <span v-else-if="notification.type === 'FORUM_LIKE'" class="icon-like">👍</span>
+            <span v-else-if="notification.type === 'FORUM_DISLIKE'" class="icon-dislike">👎</span>
             <span v-else-if="notification.type === 'ANIME_REPLY'" class="icon-reply">💬</span>
             <span v-else-if="notification.type === 'ANIME_LIKE'" class="icon-like">👍</span>
+            <span v-else-if="notification.type === 'ANIME_DISLIKE'" class="icon-dislike">👎</span>
             <span v-else class="icon-default">🔔</span>
           </div>
           <div class="notification-content">
@@ -113,8 +123,10 @@ const filteredNotifications = computed(() => {
     return notifications.value;
   } else if (activeTab.value === 'comment') {
     return notifications.value.filter(n => n.type === 'FORUM_REPLY' || n.type === 'ANIME_REPLY');
-  } else {
+  } else if (activeTab.value === 'like') {
     return notifications.value.filter(n => n.type === 'FORUM_LIKE' || n.type === 'ANIME_LIKE');
+  } else {
+    return notifications.value.filter(n => n.type === 'FORUM_DISLIKE' || n.type === 'ANIME_DISLIKE');
   }
 });
 
@@ -195,8 +207,10 @@ const getTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     FORUM_REPLY: '论坛回复',
     FORUM_LIKE: '论坛点赞',
+    FORUM_DISLIKE: '论坛点踩',
     ANIME_REPLY: '动漫回复',
     ANIME_LIKE: '动漫点赞',
+    ANIME_DISLIKE: '动漫点踩',
     PASSWORD_RESET: '密码重置'
   };
   return labels[type] || '';

@@ -143,6 +143,7 @@ public class AnimeCommentService {
 
     // 点踩评论
     public AnimeComment dislikeComment(Long commentId, Long userId) {
+        boolean dislikeAdded = false;
         // 检查用户是否已经对该评论进行过互动
         Optional<CommentInteraction> existingInteraction = commentInteractionRepository.findByUserIdAndCommentId(userId, commentId);
         if (existingInteraction.isPresent()) {
@@ -158,6 +159,7 @@ public class AnimeCommentService {
                 interaction.setInteractionType(2); // 2: 点踩
                 interaction.setCreateTime(new Date());
                 commentInteractionRepository.save(interaction);
+                dislikeAdded = true;
             }
         } else {
             // 没有互动过，添加点踩
@@ -167,6 +169,7 @@ public class AnimeCommentService {
             interaction.setInteractionType(2); // 2: 点踩
             interaction.setCreateTime(new Date());
             commentInteractionRepository.save(interaction);
+            dislikeAdded = true;
         }
         
         Optional<AnimeComment> commentOptional = animeCommentRepository.findById(commentId);
@@ -175,7 +178,25 @@ public class AnimeCommentService {
             AnimeComment comment = commentOptional.get();
             comment.setLikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 1));
             comment.setDislikeCount(commentInteractionRepository.countByCommentIdAndInteractionType(commentId, 2));
-            return animeCommentRepository.save(comment);
+            AnimeComment savedComment = animeCommentRepository.save(comment);
+
+            // 新增点踩时通知评论作者（不通知自己）
+            if (dislikeAdded && !comment.getAuthorId().equals(userId)) {
+                User targetUser = userService.findById(comment.getAuthorId());
+                User fromUser = userService.findById(userId);
+                Anime anime = animeRepository.findById(comment.getAnimeId()).orElse(null);
+                if (targetUser != null && fromUser != null && anime != null) {
+                    String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
+                    notificationService.notifyAnimeDislike(
+                            targetUser.getId(),
+                            targetUser.getUsername(),
+                            fromUser.getUsername(),
+                            animeTitle
+                    );
+                }
+            }
+
+            return savedComment;
         }
         return null;
     }

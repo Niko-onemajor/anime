@@ -165,6 +165,7 @@ public class PostService {
 
     // 点踩帖子
     public Post dislikePost(Long postId, Long userId) {
+        boolean dislikeAdded = false;
         Post post = postRepository.findById(postId).orElse(null);
         if (post != null) {
             // 检查用户是否已经对该帖子进行过互动
@@ -185,6 +186,7 @@ public class PostService {
                     forumPostInteractionRepository.save(interaction);
                     post.setDislikeCount(post.getDislikeCount() + 1);
                     post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+                    dislikeAdded = true;
                 }
             } else {
                 // 没有互动过，添加点踩
@@ -195,8 +197,14 @@ public class PostService {
                 interaction.setCreateTime(new Date());
                 forumPostInteractionRepository.save(interaction);
                 post.setDislikeCount(post.getDislikeCount() + 1);
+                dislikeAdded = true;
             }
-            return postRepository.save(post);
+            post = postRepository.save(post);
+            // 通知帖子作者
+            if (dislikeAdded) {
+                notifyPostAuthorDislike(post, userId);
+            }
+            return post;
         }
         return null;
     }
@@ -297,6 +305,22 @@ public class PostService {
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         if (fromUser == null) return;
         notificationService.notifyPostLike(
+            author.getId(),
+            author.getUsername(),
+            fromUser.getUsername(),
+            post.getTitle()
+        );
+    }
+
+    // 通知帖子作者被点踩
+    private void notifyPostAuthorDislike(Post post, Long fromUserId) {
+        User author = post.getAuthor();
+        if (author == null || author.getId().equals(fromUserId)) {
+            return; // 不通知自己
+        }
+        User fromUser = userRepository.findById(fromUserId).orElse(null);
+        if (fromUser == null) return;
+        notificationService.notifyPostDislike(
             author.getId(),
             author.getUsername(),
             fromUser.getUsername(),

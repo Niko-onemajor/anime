@@ -12,6 +12,9 @@ public interface AnimeCommentRepository extends JpaRepository<AnimeComment, Long
     // 根据动漫ID查询所有评论，按创建时间降序排序
     List<AnimeComment> findByAnimeIdOrderByCreateTimeDesc(Long animeId);
     
+    // 根据动漫ID查询顶级评论（parentId为null），按创建时间降序排序
+    List<AnimeComment> findByAnimeIdAndParentIdIsNullOrderByCreateTimeDesc(Long animeId);
+    
     // 根据动漫ID和父评论ID查询评论，按创建时间升序排序
     List<AnimeComment> findByAnimeIdAndParentIdOrderByCreateTimeAsc(Long animeId, Long parentId);
     

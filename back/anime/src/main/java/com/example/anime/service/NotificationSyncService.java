@@ -41,9 +41,13 @@ public class NotificationSyncService {
 
     public Map<String, Object> syncAll() {
         syncCount = 0;
+        int cleanupCount = 0;
         Map<String, Object> result = new HashMap<>();
 
         try {
+            // 先清理孤儿通知（引用已删除的评论/帖子/动漫/用户）
+            cleanupCount = cleanupOrphanedNotifications();
+            
             syncForumCommentReplies();
             syncForumTopLevelComments();
             syncForumCommentLikes();
@@ -55,14 +59,61 @@ public class NotificationSyncService {
             syncPostDislikes();
 
             result.put("code", 200);
-            result.put("msg", "同步完成，新增 " + syncCount + " 条通知");
+            result.put("msg", "同步完成，清理 " + cleanupCount + " 条孤儿通知，新增 " + syncCount + " 条通知");
             result.put("count", syncCount);
+            result.put("cleanupCount", cleanupCount);
         } catch (Exception e) {
             e.printStackTrace();
             result.put("code", 500);
             result.put("msg", "同步失败: " + e.getMessage());
         }
         return result;
+    }
+
+    /**
+     * 清理孤儿通知：引用已删除的评论、帖子、动漫或用户的通知
+     */
+    private int cleanupOrphanedNotifications() {
+        int removed = 0;
+        List<Notification> allNotifications = notificationRepository.findAll();
+        
+        for (Notification notification : allNotifications) {
+            boolean orphaned = false;
+            
+            // 检查用户是否存在
+            if (!userRepository.existsById(notification.getUserId())) {
+                orphaned = true;
+            }
+            
+            // 检查目标是否存在
+            if (!orphaned && notification.getTargetType() != null) {
+                if ("anime".equals(notification.getTargetType())) {
+                    if (notification.getTargetId() != null && !animeRepository.existsById(notification.getTargetId())) {
+                        orphaned = true;
+                    }
+                } else if ("forum".equals(notification.getTargetType())) {
+                    if (notification.getTargetId() != null && !postRepository.existsById(notification.getTargetId())) {
+                        orphaned = true;
+                    }
+                }
+            }
+            
+            // 检查子目标（评论）是否存在
+            if (!orphaned && notification.getSubTargetId() != null) {
+                // subTargetId 可能是动漫评论ID或论坛评论ID
+                if (!animeCommentRepository.existsById(notification.getSubTargetId()) 
+                    && !commentRepository.existsById(notification.getSubTargetId())) {
+                    orphaned = true;
+                }
+            }
+            
+            if (orphaned) {
+                notificationRepository.delete(notification);
+                removed++;
+            }
+        }
+        
+        return removed;
     }
 
     private void createIfNotExists(Long userId, String username, String type, String message, Date createTime,

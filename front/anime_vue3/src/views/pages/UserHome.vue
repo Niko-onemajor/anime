@@ -119,7 +119,7 @@
             <div v-else-if="watchHistory.length === 0" class="empty">暂无观看记录</div>
             <div v-else>
               <div class="card-list">
-                <div v-for="item in pagedWatchHistory" :key="item.id" class="card-item" @click="goToAnime(item.anime?.id, item.episode?.episodeNumber)">
+                <div v-for="item in pagedWatchHistory" :key="item.id" class="card-item" @click="goToAnimeDetail(item.anime?.id)">
                   <img :src="getImageUrl(item.anime?.image)" :alt="item.anime?.title" class="card-img">
                   <div class="card-info">
                     <h4>{{ item.anime?.title }}</h4>
@@ -284,6 +284,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
+import { ElMessage } from 'element-plus';
 
 const route = useRoute();
 const router = useRouter();
@@ -599,7 +600,7 @@ const loadPosts = async () => {
 // 切换关注
 const toggleFollow = async () => {
   if (!currentUserId.value) {
-    alert('请先登录');
+    ElMessage.warning('请先登录');
     return;
   }
   try {
@@ -611,9 +612,21 @@ const toggleFollow = async () => {
       const followed = res.data.data.followed;
       isFollowing.value = followed;
       followerCount.value += followed ? 1 : -1;
+      ElMessage.success(followed ? '关注成功' : '已取消关注');
+      // 实时更新关注和粉丝列表
+      await loadFollowStatus();
+      if (followingList.value.length > 0 || activeTab.value === 'following') {
+        loadFollowingList();
+      }
+      if (followerList.value.length > 0 || activeTab.value === 'followers') {
+        loadFollowerList();
+      }
+    } else {
+      ElMessage.warning(res.data.msg || '操作失败');
     }
   } catch (e) {
     console.error('关注操作失败:', e);
+    ElMessage.error('操作失败，请重试');
   }
 };
 

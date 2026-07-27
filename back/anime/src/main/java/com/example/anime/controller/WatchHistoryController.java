@@ -67,9 +67,20 @@ public class WatchHistoryController {
             // 获取观看记录
             List<WatchHistory> watchHistories = watchHistoryService.getUserWatchHistory(userId);
 
-            // 处理观看记录数据，添加动漫和集数信息，并去重（同一动漫只保留最新观看的记录）
+            // 处理观看记录数据，添加动漫和集数信息，并去重（同一动漫只保留最新观看的记录），过滤已删除的动漫
             Map<String, Map<String, Object>> uniqueHistories = new HashMap<>();
             for (WatchHistory history : watchHistories) {
+                // 检查动漫是否存在（已删除的动漫跳过）
+                com.example.anime.model.Anime anime = null;
+                try {
+                    anime = animeService.findById(history.getAnimeId());
+                } catch (Exception e) {
+                    // 动漫不存在，跳过此记录
+                }
+                if (anime == null) {
+                    continue; // 跳过已删除的动漫
+                }
+                
                 // 生成唯一键：只使用动漫ID
                 String key = history.getAnimeId().toString();
                 
@@ -82,18 +93,11 @@ public class WatchHistoryController {
                     historyMap.put("watchTime", history.getWatchTime());
 
                     // 添加动漫信息
-                    try {
-                        com.example.anime.model.Anime anime = animeService.findById(history.getAnimeId());
-                        if (anime != null) {
-                            Map<String, Object> animeMap = new HashMap<>();
-                            animeMap.put("id", anime.getId());
-                            animeMap.put("title", anime.getTitle());
-                            animeMap.put("image", anime.getImage());
-                            historyMap.put("anime", animeMap);
-                        }
-                    } catch (Exception e) {
-                        // 忽略动漫信息获取失败的情况
-                    }
+                    Map<String, Object> animeMap = new HashMap<>();
+                    animeMap.put("id", anime.getId());
+                    animeMap.put("title", anime.getTitle());
+                    animeMap.put("image", anime.getImage());
+                    historyMap.put("anime", animeMap);
 
                     // 添加集数信息
                     try {

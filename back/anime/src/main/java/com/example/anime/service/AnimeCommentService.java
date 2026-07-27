@@ -71,11 +71,7 @@ public class AnimeCommentService {
 
     // 获取动漫的所有顶级评论（不包含回复）
     public List<AnimeComment> getAnimeComments(Long animeId) {
-        List<AnimeComment> allComments = animeCommentRepository.findByAnimeIdOrderByCreateTimeDesc(animeId);
-        // 过滤出顶级评论（parentId为null）
-        return allComments.stream()
-                .filter(comment -> comment.getParentId() == null)
-                .collect(java.util.stream.Collectors.toList());
+        return animeCommentRepository.findByAnimeIdAndParentIdIsNullOrderByCreateTimeDesc(animeId);
     }
 
     // 获取评论的子评论
@@ -344,13 +340,21 @@ public class AnimeCommentService {
                 }
             }
             
-            // 4. 将所有引用这些评论的评论的parent_id设置为null，避免外键约束冲突
+            // 4. 删除这些评论关联的通知
+            System.out.println("删除评论关联的通知...");
+            for (Long commentId : commentIds) {
+                notificationService.deleteByCommentId(commentId);
+            }
+            // 同时删除该动漫相关的所有通知（如点赞/点踩通知）
+            notificationService.deleteByTarget("anime", animeId);
+            
+            // 5. 将所有引用这些评论的评论的parent_id设置为null，避免外键约束冲突
             System.out.println("将引用这些评论的评论的parent_id设置为null...");
             for (Long commentId : commentIds) {
                 animeCommentRepository.updateParentIdToNullByParentId(commentId);
             }
             
-            // 5. 然后删除所有评论
+            // 6. 然后删除所有评论
             System.out.println("删除所有评论...");
             animeCommentRepository.deleteByAnimeId(animeId);
             

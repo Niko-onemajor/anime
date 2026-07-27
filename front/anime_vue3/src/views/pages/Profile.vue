@@ -8,7 +8,7 @@
           <li><a href="/index">首页</a></li>
           <li><a href="/category">分类</a></li>
           <li><a href="/forum">论坛</a></li>
-          <li><a href="/messages">消息</a></li>
+          <li><a href="/messages">消息<span v-if="navUnreadCount > 0" class="nav-badge">{{ navUnreadCount }}</span></a></li>
           <li><a href="/profile" class="active">个人中心</a></li>
           <li v-if="role === 'admin' || role === '1'"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -298,6 +298,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 const router = useRouter();
@@ -312,6 +313,18 @@ if (!userRole) {
   userRole = sessionStorage.getItem('role');
 }
 const role = ref(userRole || '0');
+const navUnreadCount = ref(0);
+
+const fetchUnreadCount = async () => {
+  const u = localStorage.getItem('username') || sessionStorage.getItem('username');
+  if (!u) return;
+  try {
+    const res = await api.get('/api/notifications/unread-count', { params: { username: u } });
+    if (res.data.code === 200) {
+      navUnreadCount.value = res.data.unreadCount || 0;
+    }
+  } catch (e) { /* ignore */ }
+};
 const email = ref(localStorage.getItem('email') || 'user1@example.com');
 const birthday = ref(localStorage.getItem('birthday') || '2000-01-01');
 const favorite = ref(localStorage.getItem('favorite') || '鬼灭之刃, 进击的巨人, 海贼王');
@@ -883,6 +896,7 @@ const handleAvatarUpload = async (e: Event) => {
 };
 
 onMounted(async () => {
+  fetchUnreadCount();
   // 立即设置默认头像
   const avatar = localStorage.getItem('avatar');
   if (avatar) {
@@ -1016,6 +1030,22 @@ onMounted(async () => {
 .nav-links a.active {
   color: #ff6b6b;
   font-weight: 500;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ff4757;
+  color: white;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 4px;
+  vertical-align: top;
 }
 
 /* 个人中心内容样式 */

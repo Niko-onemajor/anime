@@ -8,7 +8,7 @@
           <li><a href="/index">首页</a></li>
           <li><a href="/category">分类</a></li>
           <li><a href="/forum" class="active">论坛</a></li>
-          <li><a href="/messages">消息</a></li>
+          <li><a href="/messages">消息<span v-if="navUnreadCount > 0" class="nav-badge">{{ navUnreadCount }}</span></a></li>
           <li><a href="/profile">个人中心</a></li>
           <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -312,6 +312,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineComponent, h } from 'vue';
 import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessageBox, ElMessage } from 'element-plus';
 
 // 处理图片URL
@@ -367,6 +368,7 @@ console.log('当前用户:', currentUser.value);
 
 // 检查用户是否为管理员
 const isAdmin = ref(false);
+const navUnreadCount = ref(0);
 
 const checkAdmin = () => {
   // 先检查localStorage
@@ -376,6 +378,17 @@ const checkAdmin = () => {
     role = sessionStorage.getItem('role');
   }
   isAdmin.value = role === 'admin' || role === '1';
+};
+
+const fetchUnreadCount = async () => {
+  const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+  if (!username) return;
+  try {
+    const res = await api.get('/api/notifications/unread-count', { params: { username } });
+    if (res.data.code === 200) {
+      navUnreadCount.value = res.data.unreadCount || 0;
+    }
+  } catch (e) { /* ignore */ }
 };
 
 // 发布帖子对话框
@@ -1297,6 +1310,7 @@ onMounted(async () => {
   
   // 检查用户是否为管理员
   checkAdmin();
+  fetchUnreadCount();
   
   // 加载帖子数据
   await loadPosts();
@@ -1367,6 +1381,22 @@ onMounted(async () => {
 .nav-links a.active {
   color: #ff6b6b;
   font-weight: 500;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ff4757;
+  color: white;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 4px;
+  vertical-align: top;
 }
 
 /* 搜索、发布帖子和排序选项 */

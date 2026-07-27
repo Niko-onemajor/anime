@@ -8,7 +8,7 @@
           <li class="nav-link"><a href="/index">首页</a></li>
           <li class="nav-link"><a href="/category">分类</a></li>
           <li class="nav-link"><a href="/forum">论坛</a></li>
-          <li class="nav-link"><a href="/messages">消息</a></li>
+          <li class="nav-link"><a href="/messages">消息<span v-if="navUnreadCount > 0" class="nav-badge">{{ navUnreadCount }}</span></a></li>
           <li class="nav-link"><a href="/profile">个人中心</a></li>
           <li class="nav-link" v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -120,6 +120,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import api from '@/utils/api';
 import { ElMessageBox, ElMessage } from 'element-plus';
 
 const router = useRouter();
@@ -131,6 +132,7 @@ const goToDetail = (id: number) => {
 
 // 检查用户是否为管理员
 const isAdmin = ref(false);
+const navUnreadCount = ref(0);
 
 const checkAdmin = () => {
   // 先检查localStorage
@@ -140,6 +142,17 @@ const checkAdmin = () => {
     role = sessionStorage.getItem('role');
   }
   isAdmin.value = role === 'admin' || role === '1';
+};
+
+const fetchUnreadCount = async () => {
+  const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+  if (!username) return;
+  try {
+    const res = await api.get('/api/notifications/unread-count', { params: { username } });
+    if (res.data.code === 200) {
+      navUnreadCount.value = res.data.unreadCount || 0;
+    }
+  } catch (e) { /* ignore */ }
 };
 
 const route = useRoute();
@@ -363,6 +376,7 @@ const fetchAnimeDetail = async () => {
 
 onMounted(() => {
   checkAdmin();
+  fetchUnreadCount();
   fetchAnimeDetail();
   
   // 检查用户登录状态，确保收藏功能正常
@@ -434,6 +448,22 @@ watch(animeId, () => {
 .nav-link.active a {
   color: #ff6b6b;
   font-weight: 500;
+}
+
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ff4757;
+  color: white;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 4px;
+  vertical-align: top;
 }
 
 /* 详情内容 */

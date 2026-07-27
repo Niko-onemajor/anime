@@ -8,7 +8,7 @@
           <li><a href="/index">首页</a></li>
           <li><a href="/category">分类</a></li>
           <li><a href="/forum">论坛</a></li>
-          <li><a href="/messages" class="active">消息</a></li>
+          <li><a href="/messages" class="active">消息<span v-if="navUnreadCount > 0" class="nav-badge">{{ navUnreadCount }}</span></a></li>
           <li><a href="/profile">个人中心</a></li>
           <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
@@ -57,6 +57,9 @@
         >
           <span class="tab-icon">👎</span>
           <span>点踩</span>
+        </button>
+        <button class="clear-all-btn" @click="clearAllNotifications" title="一键清除全部消息">
+          🗑️
         </button>
       </div>
 
@@ -115,6 +118,7 @@ import api from '@/utils/api';
 const isAdmin = ref(false);
 const isLoading = ref(true);
 const activeTab = ref('all');
+const navUnreadCount = ref(0);
 const notifications = ref<any[]>([]);
 const unreadCount = ref(0);
 
@@ -150,6 +154,7 @@ const loadNotifications = async () => {
     if (response.data.code === 200) {
       notifications.value = response.data.data || [];
       unreadCount.value = response.data.unreadCount || 0;
+      navUnreadCount.value = response.data.unreadCount || 0;
     }
   } catch (error) {
     console.error('获取通知失败:', error);
@@ -175,8 +180,21 @@ const markAllAsRead = async () => {
     await api.post('/api/notifications/read-all', { username });
     notifications.value.forEach(n => n.isRead = true);
     unreadCount.value = 0;
+    navUnreadCount.value = 0;
   } catch (error) {
     console.error('全部已读失败:', error);
+  }
+};
+
+const clearAllNotifications = async () => {
+  const username = localStorage.getItem('username') || sessionStorage.getItem('username');
+  try {
+    await api.post('/api/notifications/clear-all', { username });
+    notifications.value = [];
+    unreadCount.value = 0;
+    navUnreadCount.value = 0;
+  } catch (error) {
+    console.error('清除全部通知失败:', error);
   }
 };
 
@@ -277,6 +295,22 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ff4757;
+  color: white;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 4px;
+  vertical-align: top;
+}
+
 /* 内容区域 */
 .content {
   max-width: 800px;
@@ -362,6 +396,26 @@ onMounted(() => {
 .tab-icon {
   font-size: 18px;
   line-height: 1;
+}
+
+.clear-all-btn {
+  margin-left: auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-all-btn:hover {
+  border-color: #ff6b6b;
+  background: #fff0f0;
 }
 
 /* 加载状态 */

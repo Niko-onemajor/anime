@@ -81,6 +81,28 @@ public class NotificationController {
         return response;
     }
 
+    @PostMapping("/clear-all")
+    public Map<String, Object> clearAll(@RequestBody Map<String, String> request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String username = request.get("username");
+            User user = userService.findByUsername(username);
+            if (user == null) {
+                response.put("code", 400);
+                response.put("msg", "用户不存在");
+                return response;
+            }
+            notificationService.clearAll(user.getId());
+            response.put("code", 200);
+            response.put("msg", "已清除全部通知");
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("code", 500);
+            response.put("msg", "操作失败");
+        }
+        return response;
+    }
+
     @GetMapping("/unread-count")
     public Map<String, Object> getUnreadCount(@RequestParam String username) {
         Map<String, Object> response = new HashMap<>();

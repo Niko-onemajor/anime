@@ -47,6 +47,10 @@ public class NotificationService {
         notificationRepository.markAllAsReadByUserId(userId);
     }
 
+    public void clearAll(Long userId) {
+        notificationRepository.deleteAllByUserId(userId);
+    }
+
     /**
      * 截断文本，避免通知内容过长
      */

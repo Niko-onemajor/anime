@@ -270,7 +270,7 @@
             <div v-else-if="filteredFollowingList.length === 0" class="no-history">{{ followingSearch ? '未找到匹配的关注用户' : '暂无关注' }}</div>
             <div v-else class="follow-list">
               <div v-for="user in filteredFollowingList" :key="user.id" class="follow-item">
-                <div class="follow-info">
+                <div class="follow-info" @click="goToUserHome(user.username)" style="cursor: pointer;">
                   <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
                   <div class="follow-details">
                     <h4>{{ user.username }}</h4>
@@ -295,7 +295,7 @@
             <div v-else-if="filteredFollowerList.length === 0" class="no-history">{{ followersSearch ? '未找到匹配的粉丝用户' : '暂无粉丝' }}</div>
             <div v-else class="follow-list">
               <div v-for="user in filteredFollowerList" :key="user.id" class="follow-item">
-                <div class="follow-info">
+                <div class="follow-info" @click="goToUserHome(user.username)" style="cursor: pointer;">
                   <img :src="getImageUrl(user.avatar)" :alt="user.username" class="follow-avatar">
                   <div class="follow-details">
                     <h4>{{ user.username }}</h4>
@@ -847,6 +847,11 @@ const loadFollowerList = async () => {
 // 取消关注
 const unfollowUser = async (followedId: number) => {
   try {
+    await ElMessageBox.confirm('确定要取消关注吗？', '取消关注', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
     const res = await axios.post('http://localhost:8080/api/follow/toggle', {
       followerId: userId.value,
       followedId: followedId
@@ -857,10 +862,17 @@ const unfollowUser = async (followedId: number) => {
     } else {
       ElMessage.error(res.data.msg || '取消关注失败');
     }
-  } catch (error) {
-    console.error('取消关注失败:', error);
-    ElMessage.error('取消关注失败');
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('取消关注失败:', error);
+      ElMessage.error('取消关注失败');
+    }
   }
+};
+
+// 跳转到用户主页
+const goToUserHome = (username: string) => {
+  window.location.href = `/user/${username}`;
 };
 
 // 跳转到私信

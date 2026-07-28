@@ -62,8 +62,8 @@
           <!-- 聊天头部 -->
           <div class="chat-header">
             <div class="chat-header-info">
-              <img :src="getImageUrl(activePartner?.avatar)" :alt="activePartner?.username" class="chat-header-avatar" />
-              <span class="chat-header-name">{{ activePartner?.username }}</span>
+              <img :src="getImageUrl(activePartner?.avatar)" :alt="activePartner?.username" class="chat-header-avatar" @click="goToUserHome" title="访问个人主页" />
+              <span class="chat-header-name" @click="goToUserHome" title="访问个人主页">{{ activePartner?.username }}</span>
             </div>
           </div>
 
@@ -113,11 +113,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import api from '@/utils/api';
 import { ElMessage } from 'element-plus';
 
 const route = useRoute();
+const router = useRouter();
 const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIyMCIgZmlsbD0iI2UwZTBlMCIvPjxjaXJjbGUgY3g9IjIwIiBjeT0iMTUiIHI9IjgiIGZpbGw9IiNjY2MiLz48ZWxsaXBzZSBjeD0iMjAiIGN5PSIzNSIgcng9IjEyIiByeT0iOCIgZmlsbD0iI2NjYyIvPjwvc3ZnPg==';
 
 const getImageUrl = (url: string): string => {
@@ -180,6 +181,12 @@ const scrollToBottom = async () => {
   await nextTick();
   if (messageListRef.value) {
     messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+  }
+};
+
+const goToUserHome = () => {
+  if (activePartner.value?.username) {
+    router.push(`/user/${activePartner.value.username}`);
   }
 };
 
@@ -603,12 +610,23 @@ onUnmounted(() => {
   border-radius: 50%;
   object-fit: cover;
   background: #f0f0f0;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.chat-header-avatar:hover {
+  transform: scale(1.1);
 }
 
 .chat-header-name {
   font-size: 16px;
   font-weight: 500;
   color: #333;
+  cursor: pointer;
+}
+
+.chat-header-name:hover {
+  color: #ff6b6b;
 }
 
 /* 消息列表 */

@@ -55,6 +55,10 @@
               <span class="stat-num">{{ postsCount }}</span>
               <span class="stat-label">帖子</span>
             </div>
+            <div class="stat-item" @click="activeTab = 'comments'">
+              <span class="stat-num">{{ commentsCount }}</span>
+              <span class="stat-label">评论</span>
+            </div>
             <div class="stat-item" @click="activeTab = 'favorites'">
               <span class="stat-num">{{ favoritesCount }}</span>
               <span class="stat-label">收藏</span>
@@ -208,6 +212,34 @@
                 <span class="page-info">{{ postsPage }} / {{ postsTotalPages }}</span>
                 <button @click="postsPage = postsPage + 1" :disabled="postsPage === postsTotalPages" class="page-btn">下一页</button>
                 <button @click="postsPage = postsTotalPages" :disabled="postsPage === postsTotalPages" class="page-btn">尾页</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 评论 -->
+          <div v-if="activeTab === 'comments'">
+            <div v-if="commentsLoading" class="loading">加载中...</div>
+            <div v-else-if="comments.length === 0" class="empty">暂无评论记录</div>
+            <div v-else>
+              <div class="post-list">
+                <div v-for="comment in pagedComments" :key="comment.id" class="post-item" @click="goToCommentTarget(comment)">
+                  <div class="comment-type-badge" :class="comment.type === 'forum' ? 'forum' : 'anime'">
+                    {{ comment.type === 'forum' ? '论坛' : '动漫' }}
+                  </div>
+                  <h4 class="post-title">{{ comment.targetTitle || '未知' }}</h4>
+                  <p class="post-content">{{ comment.content }}</p>
+                  <div class="post-meta">
+                    <span>{{ formatTime(comment.createTime) }}</span>
+                    <span>👍 {{ comment.likeCount || 0 }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="pagination" v-if="commentsTotalPages > 1">
+                <button @click="commentsPage = 1" :disabled="commentsPage === 1" class="page-btn">首页</button>
+                <button @click="commentsPage = commentsPage - 1" :disabled="commentsPage === 1" class="page-btn">上一页</button>
+                <span class="page-info">{{ commentsPage }} / {{ commentsTotalPages }}</span>
+                <button @click="commentsPage = commentsPage + 1" :disabled="commentsPage === commentsTotalPages" class="page-btn">下一页</button>
+                <button @click="commentsPage = commentsTotalPages" :disabled="commentsPage === commentsTotalPages" class="page-btn">尾页</button>
               </div>
             </div>
           </div>
@@ -387,12 +419,25 @@ const pagedPosts = computed(() => {
   return posts.value.slice(start, start + postsPageSize);
 });
 
+// 评论
+const comments = ref<any[]>([]);
+const commentsCount = ref(0);
+const commentsLoading = ref(false);
+const commentsPage = ref(1);
+const commentsPageSize = 3;
+const commentsTotalPages = computed(() => Math.ceil(comments.value.length / commentsPageSize) || 1);
+const pagedComments = computed(() => {
+  const start = (commentsPage.value - 1) * commentsPageSize;
+  return comments.value.slice(start, start + commentsPageSize);
+});
+
 const tabs = [
   { key: 'profile', label: '个人资料' },
   { key: 'watchHistory', label: '观看记录' },
   { key: 'favorites', label: '收藏' },
   { key: 'ratings', label: '评分' },
   { key: 'posts', label: '帖子' },
+  { key: 'comments', label: '评论' },
   { key: 'following', label: '关注' },
   { key: 'followers', label: '粉丝' }
 ];
@@ -405,6 +450,8 @@ const switchTab = (key: string) => {
     loadFollowingList();
   } else if (key === 'followers' && followerList.value.length === 0) {
     loadFollowerList();
+  } else if (key === 'comments' && comments.value.length === 0) {
+    loadComments();
   }
 };
 
@@ -597,6 +644,33 @@ const loadPosts = async () => {
   }
 };
 
+// 加载评论
+const loadComments = async () => {
+  if (!userInfo.value.id) return;
+  commentsLoading.value = true;
+  try {
+    const [forumRes, animeRes] = await Promise.all([
+      axios.get(`http://localhost:8080/api/comment/author/${userInfo.value.id}`),
+      axios.get(`http://localhost:8080/api/anime/comment/author/${userInfo.value.id}`)
+    ]);
+    const allComments: any[] = [];
+    if (forumRes.data?.code === 200 && Array.isArray(forumRes.data.data)) {
+      allComments.push(...forumRes.data.data);
+    }
+    if (animeRes.data?.code === 200 && Array.isArray(animeRes.data.data)) {
+      allComments.push(...animeRes.data.data);
+    }
+    // 按时间降序排序
+    allComments.sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime());
+    comments.value = allComments;
+    commentsCount.value = allComments.length;
+  } catch (e) {
+    console.error('加载评论失败:', e);
+  } finally {
+    commentsLoading.value = false;
+  }
+};
+
 // 切换关注
 const toggleFollow = async () => {
   if (!currentUserId.value) {
@@ -651,6 +725,14 @@ const goToAnimeDetail = (animeId: number) => {
 
 const goToForumPost = (postId: number) => {
   router.push({ path: '/forum', query: { postId, highlightPost: 'true' } });
+};
+
+const goToCommentTarget = (comment: any) => {
+  if (comment.type === 'forum') {
+    router.push({ path: '/forum', query: { postId: comment.targetId, highlightPost: 'true' } });
+  } else if (comment.type === 'anime') {
+    router.push(`/anime/${comment.targetId}`);
+  }
 };
 
 onMounted(async () => {
@@ -1022,6 +1104,25 @@ onMounted(async () => {
   gap: 16px;
   font-size: 12px;
   color: #999;
+}
+
+.comment-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.comment-type-badge.forum {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.comment-type-badge.anime {
+  background: #fce4ec;
+  color: #c62828;
 }
 
 /* 关注列表 */

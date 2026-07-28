@@ -2,7 +2,9 @@ package com.example.anime.controller;
 
 import com.example.anime.model.Comment;
 import com.example.anime.model.User;
+import com.example.anime.model.Post;
 import com.example.anime.repository.ForumCommentInteractionRepository;
+import com.example.anime.repository.PostRepository;
 import com.example.anime.service.CommentService;
 import com.example.anime.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,9 @@ public class CommentController {
     
     @Autowired
     private ForumCommentInteractionRepository forumCommentInteractionRepository;
+    
+    @Autowired
+    private PostRepository postRepository;
 
     // 获取帖子的评论列表（嵌套结构：顶级评论 + 回复）
     @PostMapping("/getComments")
@@ -208,6 +213,33 @@ public class CommentController {
             response.put("msg", "点踩成功");
             response.put("data", comment);
         }
+        return response;
+    }
+
+    // 获取用户的所有论坛评论（带帖子信息）
+    @GetMapping("/author/{authorId}")
+    public Map<String, Object> getCommentsByAuthor(@PathVariable Long authorId) {
+        Map<String, Object> response = new HashMap<>();
+        List<Comment> comments = commentService.getCommentsByAuthorId(authorId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Comment comment : comments) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", comment.getId());
+            item.put("content", comment.getContent());
+            item.put("createTime", comment.getCreateTime());
+            item.put("likeCount", comment.getLikeCount());
+            item.put("dislikeCount", comment.getDislikeCount());
+            item.put("type", "forum");
+            // 获取帖子信息
+            Post post = postRepository.findById(comment.getPostId()).orElse(null);
+            if (post != null) {
+                item.put("targetId", post.getId());
+                item.put("targetTitle", post.getTitle());
+            }
+            result.add(item);
+        }
+        response.put("code", 200);
+        response.put("data", result);
         return response;
     }
 }

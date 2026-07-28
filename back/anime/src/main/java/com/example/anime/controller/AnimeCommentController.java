@@ -1,6 +1,7 @@
 package com.example.anime.controller;
 
 import com.example.anime.model.AnimeComment;
+import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.CommentInteractionRepository;
 import com.example.anime.service.AnimeCommentService;
 import com.example.anime.service.UserService;
@@ -23,6 +24,9 @@ public class AnimeCommentController {
     
     @Autowired
     private CommentInteractionRepository commentInteractionRepository;
+    
+    @Autowired
+    private AnimeRepository animeRepository;
 
     // 添加评论
     @PostMapping("/add")
@@ -251,6 +255,37 @@ public class AnimeCommentController {
         } catch (Exception e) {
             response.put("code", 500);
             response.put("msg", "删除失败：" + e.getMessage());
+        }
+        return response;
+    }
+
+    // 获取用户的所有动漫评论（带动漫信息）
+    @GetMapping("/author/{authorId}")
+    public Map<String, Object> getCommentsByAuthor(@PathVariable Long authorId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<AnimeComment> comments = animeCommentService.getCommentsByAuthorId(authorId);
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (AnimeComment comment : comments) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", comment.getId());
+                item.put("content", comment.getContent());
+                item.put("createTime", comment.getCreateTime());
+                item.put("likeCount", comment.getLikeCount());
+                item.put("dislikeCount", comment.getDislikeCount());
+                item.put("type", "anime");
+                item.put("targetId", comment.getAnimeId());
+                // 获取动漫标题
+                animeRepository.findById(comment.getAnimeId()).ifPresent(anime -> {
+                    item.put("targetTitle", anime.getTitle());
+                });
+                result.add(item);
+            }
+            response.put("code", 200);
+            response.put("data", result);
+        } catch (Exception e) {
+            response.put("code", 500);
+            response.put("msg", "获取评论失败：" + e.getMessage());
         }
         return response;
     }

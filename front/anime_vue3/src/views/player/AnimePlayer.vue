@@ -359,10 +359,108 @@ const recordWatchHistory = async function() {
 };
 
 // 从路由参数获取动漫ID和集数
+// 提取评论定位逻辑为独立函数，供 onMounted 和 watch 共用
+const scrollToComment = async (commentId: string | number | undefined) => {
+  if (!commentId) return;
+  
+  const targetCommentId = Number(commentId);
+  console.log('[AnimePlayer] scrollToComment: 开始定位 commentId=' + targetCommentId + ', 当前评论数=' + comments.value.length + ', loadedAnimeId=' + loadedAnimeId);
+  
+  // 如果评论数据为空或loadedAnimeId不匹配，重新加载
+  if (comments.value.length === 0 || loadedAnimeId !== animeId.value) {
+    console.log('[AnimePlayer] scrollToComment: 评论为空或动漫不匹配，重新加载 (loadedAnimeId=' + loadedAnimeId + ', animeId=' + animeId.value + ')');
+    await loadComments(animeId.value);
+    await nextTick();
+    await nextTick();
+    if (comments.value.length === 0 || loadedAnimeId !== animeId.value) {
+      console.log('[AnimePlayer] scrollToComment: 评论仍为空或动漫不匹配，放弃定位');
+      return;
+    }
+  }
+  
+  // 等待两个 tick 确保 computed 属性已更新
+  await nextTick();
+  await nextTick();
+  
+  const sortedList = sortedComments.value;
+  console.log('[AnimePlayer] scrollToComment: 排序后评论数=' + sortedList.length);
+  let parentCommentId = targetCommentId;
+  let isReply = false;
+  // 先在顶层评论中查找
+  let commentIndex = sortedList.findIndex(function(c) { return c.id === targetCommentId; });
+  // 如果没找到，可能是回复，在回复中查找其父评论
+  if (commentIndex === -1) {
+    for (let i = 0; i < sortedList.length; i++) {
+      const c = sortedList[i];
+      if (c.replies && c.replies.some(function(r: any) { return r.id === targetCommentId; })) {
+        parentCommentId = c.id;
+        commentIndex = i;
+        isReply = true;
+        console.log('[AnimePlayer] scrollToComment: 评论 ' + targetCommentId + ' 是评论 ' + parentCommentId + ' 的回复');
+        break;
+      }
+    }
+  }
+  if (commentIndex === -1) {
+    console.log('[AnimePlayer] scrollToComment: 未找到评论, commentId=' + targetCommentId + ' 在 ' + sortedList.length + ' 条评论中均未找到');
+    // 打印所有评论ID以便调试
+    const allIds = sortedList.map(function(c: any) { return c.id; });
+    console.log('[AnimePlayer] scrollToComment: 可用评论ID: ' + JSON.stringify(allIds));
+    // 对所有评论的回复ID也打印出来
+    for (const c of sortedList) {
+      if (c.replies && c.replies.length > 0) {
+        const replyIds = c.replies.map(function(r: any) { return r.id; });
+        console.log('[AnimePlayer] scrollToComment: 评论 ' + c.id + ' 的回复ID: ' + JSON.stringify(replyIds));
+      }
+    }
+    return;
+  }
+  
+  // 如果是回复，展开父评论的回复列表
+  if (isReply) {
+    const parentComment = comments.value.find(function(c: any) { return c.id === parentCommentId; });
+    if (parentComment && !parentComment.showReplies) {
+      parentComment.showReplies = true;
+    }
+  }
+  // 计算目标评论所在页码
+  const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
+  console.log('[AnimePlayer] scrollToComment: 评论索引=' + commentIndex + ', 目标页码=' + targetPage + ', 当前页码=' + commentCurrentPage.value);
+  commentCurrentPage.value = targetPage;
+  // 使用 nextTick + 重试机制确保 DOM 完全更新后滚动
+  await nextTick();
+  await nextTick();
+  
+  let retryCount = 0;
+  const maxRetries = 20;
+  const tryScroll = function() {
+    const commentEl = document.getElementById('comment-' + parentCommentId);
+    if (commentEl) {
+      console.log('[AnimePlayer] scrollToComment: 找到评论元素 comment-' + parentCommentId + ', 滚动定位');
+      commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      commentEl.classList.add('highlight');
+      setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
+    } else if (retryCount < maxRetries) {
+      retryCount++;
+      if (retryCount % 5 === 0) {
+        console.log('[AnimePlayer] scrollToComment: 第 ' + retryCount + ' 次重试查找元素 comment-' + parentCommentId);
+      }
+      setTimeout(tryScroll, 200);
+    } else {
+      console.log('[AnimePlayer] scrollToComment: 重试 ' + maxRetries + ' 次后仍未找到评论元素 comment-' + parentCommentId);
+    }
+  };
+  setTimeout(tryScroll, 300);
+};
+
+// 防止重复触发导航（必须在 watch 之前声明）
+let isNavigatingToComment = false;
+// 跟踪当前已加载评论的动漫ID，防止跨动漫的评论数据混淆
+let loadedAnimeId: number = 0;
+
 onMounted(async function() {
   const id = Number(route.params.id);
   const episode = Number(route.params.episode);
-  const commentId = route.query.commentId;
 
   // 获取当前用户ID
   const username = localStorage.getItem('username');
@@ -377,15 +475,6 @@ onMounted(async function() {
     }
   }
 
-  if (id) {
-    animeId.value = id;
-    // 根据动漫ID获取动漫信息和集数
-    getAnimeInfo(id);
-    // 加载评论（等待完成以便后续定位）
-    await loadComments(id);
-    // 获取用户评分
-    getUserRating(id);
-  }
   if (episode) {
     currentEpisode.value = episode;
   }
@@ -398,86 +487,10 @@ onMounted(async function() {
   // 记录观看历史
   setTimeout(recordWatchHistory, 1000);
   
-  // 从消息页跳转过来时定位到对应评论
-  if (commentId) {
-    await nextTick();
-    const targetCommentId = Number(commentId);
-    const sortedList = sortedComments.value;
-    let parentCommentId = targetCommentId;
-    let isReply = false;
-    // 先在顶层评论中查找
-    let commentIndex = sortedList.findIndex(function(c) { return c.id === targetCommentId; });
-    // 如果没找到，可能是回复，在回复中查找其父评论
-    if (commentIndex === -1) {
-      for (let i = 0; i < sortedList.length; i++) {
-        const c = sortedList[i];
-        if (c.replies && c.replies.some(function(r: any) { return r.id === targetCommentId; })) {
-          parentCommentId = c.id;
-          commentIndex = i;
-          isReply = true;
-          break;
-        }
-      }
-    }
-    if (commentIndex !== -1) {
-      // 如果是回复，展开父评论的回复列表
-      if (isReply) {
-        const parentComment = comments.value.find(function(c: any) { return c.id === parentCommentId; });
-        if (parentComment && !parentComment.showReplies) {
-          parentComment.showReplies = true;
-        }
-      }
-      // 计算目标评论所在页码
-      const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
-      commentCurrentPage.value = targetPage;
-      // 使用 setTimeout 确保分页切换后 DOM 完全更新
-      await nextTick();
-      setTimeout(function() {
-        const commentEl = document.getElementById('comment-' + parentCommentId);
-        if (commentEl) {
-          commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          commentEl.classList.add('highlight');
-          setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
-        }
-      }, 200);
-    }
-  }
+  // 注意：动漫数据加载和评论导航由 watch route.params.id (immediate: true) 统一处理
 });
 
-// 监听路由参数变化
-watch(function() {
-  return route.params.id;
-}, function(newId) {
-  const id = Number(newId);
-  if (id) {
-    animeId.value = id;
-    getAnimeInfo(id);
-    loadComments(id);
-    getUserRating(id);
-  }
-});
 
-watch(function() {
-  return route.params.episode;
-}, function(newEpisode) {
-  const episode = Number(newEpisode);
-  if (episode) {
-    currentEpisode.value = episode;
-    // 记录观看历史
-    setTimeout(recordWatchHistory, 500);
-  }
-});
-
-// 监听episodes数组变化，当数据加载完成后设置音量
-watch(episodes, function() {
-  if (videoRef.value) {
-    // 重新加载视频元素
-    const video = videoRef.value;
-    video.load();
-    // 设置音量为40%
-    video.volume = 0.4;
-  }
-}, { deep: true });
 
 // 获取动漫信息和集数
 const getAnimeInfo = async function(id: number) {
@@ -623,14 +636,47 @@ const getUserRating = async function(animeId: number) {
 };
 
 // 评论相关
+// 防止重复加载评论
+let isLoadingComments = false;
+let lastLoadAnimeId = 0;
+let loadRetryCount = 0;
+const MAX_LOAD_RETRIES = 2;
+
 const loadComments = async function(animeId: number) {
+  // 防止重复加载同一动漫的评论
+  if (isLoadingComments && lastLoadAnimeId === animeId) {
+    console.log('[AnimePlayer] 评论正在加载中，跳过重复请求, animeId:', animeId);
+    return;
+  }
+  
+  isLoadingComments = true;
+  lastLoadAnimeId = animeId;
+  
   try {
+    console.log('[AnimePlayer] 开始加载评论, animeId:', animeId);
     const res = await axios.post('/api/anime/comment/list', {
       animeId
     });
     
+    console.log('[AnimePlayer] 评论列表响应:', res.data);
+    
     if (res.data.code === 200) {
-      const commentList = res.data.data;
+      const commentList = res.data.data || [];
+      console.log('[AnimePlayer] 获取到评论数:', commentList.length);
+      
+      if (commentList.length === 0) {
+        console.log('[AnimePlayer] 该动漫暂无评论');
+        // 验证动漫ID是否匹配，防止旧请求覆盖当前数据
+        if (loadedAnimeId !== animeId) {
+          console.log('[AnimePlayer] 动漫已切换，丢弃空评论数据');
+          loadRetryCount = 0;
+          return;
+        }
+        comments.value = [];
+        loadRetryCount = 0;
+        return;
+      }
+      
       // 保存当前评论的展开状态
       const currentCommentStates = new Map();
       comments.value.forEach(function(comment: any) {
@@ -640,44 +686,80 @@ const loadComments = async function(animeId: number) {
       // 获取当前用户的最新头像
       const userAvatar = localStorage.getItem('avatar');
       
-      // 处理评论数据，使用后端返回的作者信息
-        comments.value = await Promise.all(commentList.map(async function(comment: any) {
+      // 保存顶级评论（即使回复加载失败也不影响）
+      const processedComments: any[] = [];
+      
+      // 并行加载所有评论的回复，使用 allSettled 防止单点失败
+      // 每个评论的处理都包裹在 try-catch 中，确保单个失败不影响其他评论
+      const results = await Promise.allSettled(commentList.map(async function(comment: any) {
+        try {
           // 从后端返回的数据中获取作者信息
-          let authorName = comment.author ? comment.author.username : '未知用户';
-          let authorAvatar = comment.author ? (comment.author.avatar ? comment.author.avatar : 'http://localhost:8080/avatars/avatar1.jpg') : 'http://localhost:8080/avatars/avatar1.jpg';
+          let authorName = '未知用户';
+          let authorAvatar = 'http://localhost:8080/avatars/avatar1.jpg';
+          try {
+            authorName = comment.author ? (comment.author.username || '未知用户') : '未知用户';
+            authorAvatar = comment.author ? (comment.author.avatar || 'http://localhost:8080/avatars/avatar1.jpg') : 'http://localhost:8080/avatars/avatar1.jpg';
+          } catch (e) {
+            console.error('[AnimePlayer] 处理评论作者信息失败:', comment.id, e);
+          }
           
           // 如果是当前用户，使用localStorage中的最新头像
           if (authorName === currentUser.value && userAvatar) {
             authorAvatar = userAvatar;
           }
           
-          // 加载回复
-          const repliesRes = await axios.post('/api/anime/comment/replies', {
-            animeId,
-            parentId: comment.id
-          });
+          // 加载回复（失败时使用空数组）
+          let replies: any[] = [];
+          try {
+            const repliesRes = await axios.post('/api/anime/comment/replies', {
+              animeId,
+              parentId: comment.id
+            });
+            replies = repliesRes.data.code === 200 ? (repliesRes.data.data || []) : [];
+          } catch (e) {
+            console.error('[AnimePlayer] 加载评论回复失败:', comment.id, e);
+          }
           
-          const replies = repliesRes.data.code === 200 ? repliesRes.data.data : [];
           // 处理回复的作者信息
-          const processedReplies = replies.map(function(reply: any) {
-            let replyAuthorName = reply.author ? reply.author.username : '未知用户';
-            let replyAuthorAvatar = reply.author ? (reply.author.avatar ? reply.author.avatar : 'http://localhost:8080/avatars/avatar1.jpg') : 'http://localhost:8080/avatars/avatar1.jpg';
-            
-            // 如果是当前用户，使用localStorage中的最新头像
-            if (replyAuthorName === currentUser.value && userAvatar) {
-              replyAuthorAvatar = userAvatar;
+          const processedReplies = (replies || []).map(function(reply: any) {
+            try {
+              let replyAuthorName = '未知用户';
+              let replyAuthorAvatar = 'http://localhost:8080/avatars/avatar1.jpg';
+              try {
+                replyAuthorName = reply.author ? (reply.author.username || '未知用户') : '未知用户';
+                replyAuthorAvatar = reply.author ? (reply.author.avatar || 'http://localhost:8080/avatars/avatar1.jpg') : 'http://localhost:8080/avatars/avatar1.jpg';
+              } catch (e2) {
+                console.error('[AnimePlayer] 处理回复作者信息失败:', reply.id, e2);
+              }
+              
+              if (replyAuthorName === currentUser.value && userAvatar) {
+                replyAuthorAvatar = userAvatar;
+              }
+              
+              return {
+                ...reply,
+                authorName: replyAuthorName,
+                authorAvatar: replyAuthorAvatar,
+                likes: reply.likes || [],
+                dislikes: reply.dislikes || [],
+                likeCount: reply.likeCount || 0,
+                dislikeCount: reply.dislikeCount || 0,
+                deleted: reply.deleted || false
+              };
+            } catch (e3) {
+              console.error('[AnimePlayer] 处理回复失败:', reply.id, e3);
+              return {
+                id: reply.id || 0,
+                content: '[回复加载失败]',
+                authorName: '未知用户',
+                authorAvatar: 'http://localhost:8080/avatars/avatar1.jpg',
+                likes: [],
+                dislikes: [],
+                likeCount: 0,
+                dislikeCount: 0,
+                deleted: true
+              };
             }
-            
-            return {
-              ...reply,
-              authorName: replyAuthorName,
-              authorAvatar: replyAuthorAvatar,
-              likes: reply.likes || [],
-              dislikes: reply.dislikes || [],
-              likeCount: reply.likeCount || 0,
-              dislikeCount: reply.dislikeCount || 0,
-              deleted: reply.deleted || false
-            };
           });
           
           // 保持之前的展开状态
@@ -697,12 +779,183 @@ const loadComments = async function(animeId: number) {
             replySortBy: 'time',
             replySortOrder: 'desc'
           };
-        }));
+        } catch (outerError) {
+          console.error('[AnimePlayer] 评论整体处理失败:', comment.id, outerError);
+          // 返回一个降级的评论对象，至少保留基本信息
+          return {
+            id: comment.id || 0,
+            animeId: comment.animeId || animeId,
+            content: '[评论加载失败]',
+            authorName: '未知用户',
+            authorAvatar: 'http://localhost:8080/avatars/avatar1.jpg',
+            createTime: comment.createTime || new Date().toISOString(),
+            replies: [],
+            likes: [],
+            dislikes: [],
+            likeCount: 0,
+            dislikeCount: 0,
+            deleted: true,
+            showReplies: false,
+            replySortBy: 'time',
+            replySortOrder: 'desc'
+          };
+        }
+      }));
+      
+      // 收集成功的结果
+      let successCount = 0;
+      let failCount = 0;
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          processedComments.push(result.value);
+          successCount++;
+        } else {
+          failCount++;
+          console.error('[AnimePlayer] 评论处理失败:', result.reason);
+        }
+      }
+      
+      console.log('[AnimePlayer] 评论处理完成, 成功:', successCount, ', 失败:', failCount, ', 总计:', processedComments.length);
+      
+      // 关键修复：验证动漫ID是否匹配，防止旧请求的数据覆盖当前动漫的评论
+      if (loadedAnimeId !== animeId) {
+        console.log('[AnimePlayer] 动漫已切换 (loadedAnimeId=' + loadedAnimeId + ', animeId=' + animeId + ')，丢弃旧评论数据');
+        loadRetryCount = 0;
+        return;
+      }
+      
+      comments.value = processedComments;
+      loadRetryCount = 0;
+    } else {
+      console.error('[AnimePlayer] 加载评论失败, 后端返回:', res.data);
+      // 如果评论列表为空且还有重试次数，进行重试
+      if (loadRetryCount < MAX_LOAD_RETRIES) {
+        loadRetryCount++;
+        console.log('[AnimePlayer] 重试加载评论 (' + loadRetryCount + '/' + MAX_LOAD_RETRIES + ')');
+        isLoadingComments = false;
+        setTimeout(function() {
+          loadComments(animeId);
+        }, 500);
+        return;
+      }
+      loadRetryCount = 0;
     }
   } catch (error) {
-    console.error('加载评论失败:', error);
+    console.error('[AnimePlayer] 加载评论异常:', error);
+    // 网络错误时重试
+    if (loadRetryCount < MAX_LOAD_RETRIES) {
+      loadRetryCount++;
+      console.log('[AnimePlayer] 网络错误，重试加载评论 (' + loadRetryCount + '/' + MAX_LOAD_RETRIES + ')');
+      isLoadingComments = false;
+      setTimeout(function() {
+        loadComments(animeId);
+      }, 500);
+      return;
+    }
+    loadRetryCount = 0;
+  } finally {
+    isLoadingComments = false;
   }
 };
+
+// 监听路由参数变化（包括初始加载）- 统一处理数据加载和评论定位
+watch(function() {
+  return route.params.id;
+}, async function(newId) {
+  const id = Number(newId);
+  if (!id) return;
+  
+  console.log('[AnimePlayer] watch route.params.id 触发, id=' + id);
+  
+  // 关键修复：在函数开始时立即设置标志，防止 commentId watch 并发干扰
+  // 如果 query 中有 commentId，说明本次导航需要定位评论，标记为导航中
+  const hasCommentId = !!route.query.commentId;
+  if (hasCommentId) {
+    isNavigatingToComment = true;
+  } else {
+    isNavigatingToComment = false;
+  }
+  
+  // 如果切换到不同动漫，清空旧评论数据并重置分页
+  if (loadedAnimeId !== id) {
+    console.log('[AnimePlayer] 动漫切换: ' + loadedAnimeId + ' -> ' + id + ', 清空旧评论');
+    comments.value = [];
+    commentCurrentPage.value = 1;
+    selectedCommentSort.value = 'time';
+    commentSortOrder.value = 'desc';
+    loadedAnimeId = id;
+  }
+  
+  animeId.value = id;
+  getAnimeInfo(id);
+  await loadComments(id);
+  getUserRating(id);
+  
+  // 处理从消息通知跳转的评论定位
+  const commentId = route.query.commentId;
+  if (commentId) {
+    console.log('[AnimePlayer] watch params.id: 定位到评论 commentId=' + commentId);
+    try {
+      await scrollToComment(commentId);
+    } finally {
+      // 延迟重置标志，确保 commentId watch 不会立即重新触发
+      setTimeout(function() { isNavigatingToComment = false; }, 800);
+    }
+  } else {
+    // 没有 commentId 时也要延迟重置，确保初始化完成
+    setTimeout(function() { isNavigatingToComment = false; }, 300);
+  }
+}, { immediate: true });
+
+watch(function() {
+  return route.params.episode;
+}, function(newEpisode) {
+  const episode = Number(newEpisode);
+  if (episode) {
+    currentEpisode.value = episode;
+    // 记录观看历史
+    setTimeout(recordWatchHistory, 500);
+  }
+});
+
+// 监听路由 query 中的 commentId 变化，支持组件复用时（已在播放页时点击通知）的评论定位
+watch(function() {
+  return route.query.commentId;
+}, async function(newCommentId, oldCommentId) {
+  if (!newCommentId || newCommentId === oldCommentId || isNavigatingToComment) return;
+  
+  // 确保 URL 中的 animeId 与当前已加载的动漫ID一致，否则由 params watch 处理
+  const urlAnimeId = Number(route.params.id);
+  if (urlAnimeId !== loadedAnimeId) {
+    console.log('[AnimePlayer] watch commentId: animeId 不匹配 (url=' + urlAnimeId + ', loaded=' + loadedAnimeId + '), 等待 params watch 处理');
+    return;
+  }
+  
+  console.log('[AnimePlayer] watch commentId: 定位到评论 commentId=' + newCommentId);
+  isNavigatingToComment = true;
+  try {
+    // 如果评论数据为空，先重新加载评论
+    if (comments.value.length === 0) {
+      console.log('[AnimePlayer] watch commentId: 评论为空，重新加载评论');
+      await loadComments(animeId.value);
+    }
+    await nextTick();
+    await scrollToComment(newCommentId);
+  } finally {
+    isNavigatingToComment = false;
+  }
+});
+
+// 监听episodes数组变化，当数据加载完成后设置音量
+watch(episodes, function() {
+  if (videoRef.value) {
+    // 重新加载视频元素
+    const video = videoRef.value;
+    video.load();
+    // 设置音量为40%
+    video.volume = 0.4;
+  }
+}, { deep: true });
 
 // 提交评论
 const submitComment = async function() {

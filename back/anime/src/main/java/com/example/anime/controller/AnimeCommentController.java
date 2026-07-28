@@ -55,19 +55,33 @@ public class AnimeCommentController {
     public Map<String, Object> getComments(@RequestBody Map<String, Object> request) {
         Map<String, Object> response = new HashMap<>();
         try {
-            Long animeId = Long.parseLong(request.get("animeId").toString());
+            Object animeIdObj = request.get("animeId");
+            if (animeIdObj == null) {
+                response.put("code", 400);
+                response.put("msg", "缺少 animeId 参数");
+                return response;
+            }
+            Long animeId = Long.parseLong(animeIdObj.toString());
+            System.out.println("[AnimeCommentController] 获取评论列表, animeId=" + animeId);
 
             // 获取评论列表
             List<AnimeComment> comments = animeCommentService.getAnimeComments(animeId);
+            System.out.println("[AnimeCommentController] 查询到 " + comments.size() + " 条顶级评论");
             
             // 处理评论数据，添加作者信息
             List<Map<String, Object>> processedComments = new ArrayList<>();
             for (AnimeComment comment : comments) {
-                // 重新计算点赞数和点踩数
-                int likeCount = commentInteractionRepository.countByCommentIdAndInteractionType(comment.getId(), 1);
-                int dislikeCount = commentInteractionRepository.countByCommentIdAndInteractionType(comment.getId(), 2);
-                comment.setLikeCount(likeCount);
-                comment.setDislikeCount(dislikeCount);
+                try {
+                    // 重新计算点赞数和点踩数
+                    int likeCount = commentInteractionRepository.countByCommentIdAndInteractionType(comment.getId(), 1);
+                    int dislikeCount = commentInteractionRepository.countByCommentIdAndInteractionType(comment.getId(), 2);
+                    comment.setLikeCount(likeCount);
+                    comment.setDislikeCount(dislikeCount);
+                } catch (Exception e) {
+                    System.out.println("[AnimeCommentController] 计算评论互动数失败, commentId=" + comment.getId() + ": " + e.getMessage());
+                    comment.setLikeCount(0);
+                    comment.setDislikeCount(0);
+                }
                 
                 Map<String, Object> commentMap = new HashMap<>();
                 commentMap.put("id", comment.getId());
@@ -76,8 +90,8 @@ public class AnimeCommentController {
                 commentMap.put("content", comment.getContent());
                 commentMap.put("createTime", comment.getCreateTime());
                 commentMap.put("parentId", comment.getParentId());
-                commentMap.put("likeCount", likeCount);
-                commentMap.put("dislikeCount", dislikeCount);
+                commentMap.put("likeCount", comment.getLikeCount());
+                commentMap.put("dislikeCount", comment.getDislikeCount());
                 
                 // 添加作者信息
                 try {
@@ -90,15 +104,18 @@ public class AnimeCommentController {
                         commentMap.put("author", authorMap);
                     }
                 } catch (Exception e) {
-                    // 忽略作者信息获取失败的情况
+                    System.out.println("[AnimeCommentController] 获取评论作者信息失败, authorId=" + comment.getAuthorId() + ": " + e.getMessage());
                 }
                 
                 processedComments.add(commentMap);
             }
 
+            System.out.println("[AnimeCommentController] 返回 " + processedComments.size() + " 条评论");
             response.put("code", 200);
             response.put("data", processedComments);
         } catch (Exception e) {
+            System.out.println("[AnimeCommentController] 获取评论列表异常: " + e.getMessage());
+            e.printStackTrace();
             response.put("code", 500);
             response.put("msg", "获取评论失败：" + e.getMessage());
         }

@@ -42,11 +42,15 @@ public class NotificationSyncService {
     public Map<String, Object> syncAll() {
         syncCount = 0;
         int cleanupCount = 0;
+        int fixCount = 0;
         Map<String, Object> result = new HashMap<>();
 
         try {
             // 先清理孤儿通知（引用已删除的评论/帖子/动漫/用户）
             cleanupCount = cleanupOrphanedNotifications();
+            
+            // 修复缺失 targetType 的通知
+            fixCount = fixMissingTargetTypes();
             
             syncForumCommentReplies();
             syncForumTopLevelComments();
@@ -59,15 +63,52 @@ public class NotificationSyncService {
             syncPostDislikes();
 
             result.put("code", 200);
-            result.put("msg", "同步完成，清理 " + cleanupCount + " 条孤儿通知，新增 " + syncCount + " 条通知");
+            result.put("msg", "同步完成，清理 " + cleanupCount + " 条孤儿通知，修复 " + fixCount + " 条缺失字段，新增 " + syncCount + " 条通知");
             result.put("count", syncCount);
             result.put("cleanupCount", cleanupCount);
+            result.put("fixCount", fixCount);
         } catch (Exception e) {
             e.printStackTrace();
             result.put("code", 500);
             result.put("msg", "同步失败: " + e.getMessage());
         }
         return result;
+    }
+
+    /**
+     * 修复缺失 targetType 的通知：根据 type 字段推断并填充 targetType
+     */
+    private int fixMissingTargetTypes() {
+        int fixed = 0;
+        List<Notification> allNotifications = notificationRepository.findAll();
+        
+        for (Notification notification : allNotifications) {
+            boolean needUpdate = false;
+            
+            // 修复缺失的 targetType
+            if (notification.getTargetType() == null || notification.getTargetType().trim().isEmpty()) {
+                String type = notification.getType();
+                if (type != null) {
+                    if (type.startsWith("ANIME")) {
+                        notification.setTargetType("anime");
+                        needUpdate = true;
+                    } else if (type.startsWith("FORUM")) {
+                        notification.setTargetType("forum");
+                        needUpdate = true;
+                    }
+                }
+            }
+            
+            if (needUpdate) {
+                notificationRepository.save(notification);
+                fixed++;
+            }
+        }
+        
+        if (fixed > 0) {
+            System.out.println("[NotificationSync] 修复了 " + fixed + " 条缺失 targetType 的通知");
+        }
+        return fixed;
     }
 
     /**

@@ -280,7 +280,7 @@ const loadNotifications = async () => {
         const syncRes = await api.post('/api/notifications/sync');
         if (syncRes.data.code === 200) {
           // 如果有清理或新增，重新加载通知列表
-          if (syncRes.data.count > 0 || syncRes.data.cleanupCount > 0) {
+          if (syncRes.data.count > 0 || syncRes.data.cleanupCount > 0 || syncRes.data.fixCount > 0) {
             const reloadRes = await api.get('/api/notifications/list', { params: { username } });
             if (reloadRes.data.code === 200) {
               notifications.value = reloadRes.data.data || [];
@@ -320,7 +320,41 @@ const handleNotificationClick = async (notification: any) => {
   }
 
   // 根据通知类型跳转到对应页面
-  if (notification.targetType === 'forum' && notification.targetId) {
+  // 多层 fallback 确保 targetType 一定被正确推断
+  let targetType = notification.targetType;
+  const type = (notification.type || '').toUpperCase();
+  
+  // 1. 如果 targetType 缺失，从 type 字段推断
+  if (!targetType) {
+    if (type.startsWith('ANIME')) {
+      targetType = 'anime';
+    } else if (type.startsWith('FORUM')) {
+      targetType = 'forum';
+    }
+  }
+  
+  // 2. 如果 targetType 值为空字符串，同样视为缺失
+  if (targetType && typeof targetType === 'string' && targetType.trim() === '') {
+    targetType = null;
+    if (type.startsWith('ANIME')) {
+      targetType = 'anime';
+    } else if (type.startsWith('FORUM')) {
+      targetType = 'forum';
+    }
+  }
+  
+  // 3. 最后兜底：从 message 内容推断（消息中包含"动漫"或"论坛"关键词）
+  if (!targetType && notification.message) {
+    if (notification.message.includes('动漫')) {
+      targetType = 'anime';
+    } else if (notification.message.includes('论坛')) {
+      targetType = 'forum';
+    }
+  }
+  
+  console.log('通知跳转:', { type: notification.type, targetType, targetId: notification.targetId, subTargetId: notification.subTargetId, message: notification.message?.substring(0, 30) });
+  
+  if (targetType === 'forum' && notification.targetId) {
     const query: any = { postId: notification.targetId };
     if (notification.subTargetId) {
       query.commentId = notification.subTargetId;
@@ -328,13 +362,17 @@ const handleNotificationClick = async (notification: any) => {
       // 没有 subTargetId 说明是帖子级别的点赞/点踩，高亮帖子本身
       query.highlightPost = 'true';
     }
+    console.log('[Message] 跳转到论坛: postId=' + notification.targetId + ', commentId=' + (notification.subTargetId || '无'));
     router.push({ path: '/forum', query });
-  } else if (notification.targetType === 'anime' && notification.targetId) {
+  } else if (targetType === 'anime' && notification.targetId) {
     const query: any = {};
     if (notification.subTargetId) {
       query.commentId = notification.subTargetId;
     }
+    console.log('[Message] 跳转到动漫播放页: animeId=' + notification.targetId + ', commentId=' + (notification.subTargetId || '无'));
     router.push({ path: `/anime/${notification.targetId}/play/1`, query });
+  } else {
+    console.warn('[Message] 无法确定通知跳转目标, 完整通知数据:', JSON.stringify(notification));
   }
 };
 

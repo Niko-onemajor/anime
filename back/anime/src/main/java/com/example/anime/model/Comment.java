@@ -37,13 +37,4 @@ public class Comment {
 
     @Column(name = "dislike_count", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer dislikeCount = 0;
-
-    // 关联关系
-    @ManyToOne
-    @JoinColumn(name = "post_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private Post post;
-
-    @ManyToOne
-    @JoinColumn(name = "author_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private User author;
 }

@@ -1,5 +1,8 @@
 package com.example.anime.model;
 
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
+
 import javax.persistence.*;
 import java.util.Date;
 
@@ -11,8 +14,9 @@ public class Post {
     private Long id;
     private String title;
     private String content;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     private User author;
     @Column(name = "create_time")
     private Date createTime;

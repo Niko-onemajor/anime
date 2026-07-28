@@ -287,7 +287,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineComponent, h, nextTick } from 'vue';
+import { ref, computed, onMounted, defineComponent, h, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import api from '@/utils/api';
@@ -1349,13 +1349,61 @@ const goToUserHome = (username: string) => {
   router.push(`/user/${username}`);
 };
 
+// 递归查找评论（在顶层评论和嵌套回复中查找）
+const findCommentInTree = (comments: any[], targetId: number): { parentCommentId: number, index: number } | null => {
+  for (let i = 0; i < comments.length; i++) {
+    const c = comments[i];
+    // 检查顶层评论
+    if (c.id === targetId) {
+      return { parentCommentId: c.id, index: i };
+    }
+    // 递归检查回复
+    if (c.replies && c.replies.length > 0) {
+      for (const reply of c.replies) {
+        if (reply.id === targetId) {
+          return { parentCommentId: c.id, index: i };
+        }
+      }
+    }
+  }
+  return null;
+};
+
 // 处理从消息通知跳转：定位到指定帖子和评论
 const handleNavigateToPost = async (postId: number, commentId: number | null) => {
+  console.log('[Forum] handleNavigateToPost: postId=' + postId + ', commentId=' + commentId);
+  
+  // 如果帖子还没加载，等待并重试
+  let postRetries = 0;
+  while (posts.value.length === 0 && postRetries < 10) {
+    console.log('[Forum] handleNavigateToPost: 帖子列表为空，等待加载... (第' + (postRetries + 1) + '次)');
+    await new Promise(resolve => setTimeout(resolve, 300));
+    postRetries++;
+  }
+  
   // 找到目标帖子
   const targetPost = posts.value.find(p => p.id === postId);
   if (!targetPost) {
-    console.log('未找到目标帖子:', postId);
+    console.log('[Forum] 未找到目标帖子:', postId);
+    // 如果帖子列表不为空但没找到，可能是帖子真的不存在
+    if (posts.value.length > 0) {
+      ElMessage.warning('目标帖子不存在或已被删除');
+    } else {
+      ElMessage.warning('帖子列表加载失败，请刷新页面后重试');
+    }
     return;
+  }
+
+  // 计算目标帖子在排序后的列表中的位置，切换到对应页码
+  const sortedList = sortedPosts.value;
+  const postIndex = sortedList.findIndex(p => p.id === postId);
+  if (postIndex !== -1) {
+    const targetPage = Math.floor(postIndex / pageSize) + 1;
+    if (currentPage.value !== targetPage) {
+      currentPage.value = targetPage;
+      await nextTick();
+      await nextTick();
+    }
   }
 
   // 展开评论区并加载评论
@@ -1363,29 +1411,45 @@ const handleNavigateToPost = async (postId: number, commentId: number | null) =>
     showComments.value[postId] = true;
     await loadComments(postId);
   }
+  
+  // 如果评论为空（可能加载失败），重新加载一次
+  const post = posts.value.find(p => p.id === postId);
+  if (post && (!post.comments || post.comments.length === 0)) {
+    console.log('[Forum] handleNavigateToPost: 评论为空，重新加载');
+    await loadComments(postId);
+  }
 
+  // 等待多次 tick 确保 DOM 完全更新
+  await nextTick();
   await nextTick();
 
   // 滚动到帖子位置并高亮
-  const postEl = document.getElementById('post-' + postId);
-  if (postEl) {
-    postEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // 如果要求高亮帖子（帖子级别点赞/点踩通知）
-    const highlightPost = route.query.highlightPost === 'true';
-    if (highlightPost) {
-      postEl.classList.add('highlight-post');
-      setTimeout(() => postEl.classList.remove('highlight-post'), 3000);
+  const highlightPost = route.query.highlightPost === 'true';
+  const tryScrollToPost = function(retries: number) {
+    const postEl = document.getElementById('post-' + postId);
+    if (postEl) {
+      console.log('[Forum] handleNavigateToPost: 找到帖子元素 post-' + postId + ', 滚动定位');
+      postEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (highlightPost) {
+        postEl.classList.add('highlight-post');
+        setTimeout(function() { postEl.classList.remove('highlight-post'); }, 3000);
+      }
+    } else if (retries > 0) {
+      setTimeout(function() { tryScrollToPost(retries - 1); }, 200);
+    } else {
+      console.log('[Forum] 重试后仍未找到帖子元素: post-' + postId);
     }
-  }
+  };
+  setTimeout(function() { tryScrollToPost(10); }, 200);
 
   // 如果指定了评论ID，定位到该评论
   if (commentId) {
-    const post = posts.value.find(p => p.id === postId);
-    if (post && post.comments) {
-      // 与 getPagedComments 保持一致的排序逻辑
+    const currentPost = posts.value.find(p => p.id === postId);
+    if (currentPost && currentPost.comments && currentPost.comments.length > 0) {
+      // 与 getSortedAndPagedComments 保持一致的排序逻辑
       const sortType = commentSort.value[postId] || 'time';
       const order = commentSortOrder.value[postId] || 'desc';
-      const allComments = [...post.comments].sort((a, b) => {
+      const allComments = [...currentPost.comments].sort((a, b) => {
         if (sortType === 'time') {
           const timeA = new Date(a.createTime).getTime();
           const timeB = new Date(b.createTime).getTime();
@@ -1401,33 +1465,71 @@ const handleNavigateToPost = async (postId: number, commentId: number | null) =>
         }
         return 0;
       });
-      let parentCommentId = commentId;
-      // 先在顶层评论中查找
-      let commentIndex = allComments.findIndex((c: any) => c.id === commentId);
-      // 如果没找到，可能是回复，在回复中查找其父评论
-      if (commentIndex === -1) {
-        for (let i = 0; i < allComments.length; i++) {
-          const c = allComments[i];
-          if (c.replies && c.replies.some((r: any) => r.id === commentId)) {
-            parentCommentId = c.id;
-            commentIndex = i;
-            break;
-          }
-        }
-      }
+      
+      // 递归查找评论（包括嵌套回复）
+      const found = findCommentInTree(allComments, commentId);
+      const parentCommentId = found ? found.parentCommentId : commentId;
+      const commentIndex = found ? found.index : -1;
+      
+      console.log('[Forum] handleNavigateToPost: 查找评论 ' + commentId + ', 找到=' + (found !== null) + ', parentCommentId=' + parentCommentId + ', index=' + commentIndex);
+      
       if (commentIndex !== -1) {
         const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
         commentCurrentPage.value[postId] = targetPage;
         await nextTick();
-        setTimeout(() => {
+        await nextTick();
+        // 带重试的滚动定位
+        let retryCount = 0;
+        const tryScrollToComment = function() {
           const commentEl = document.getElementById('comment-' + parentCommentId);
           if (commentEl) {
+            console.log('[Forum] handleNavigateToPost: 找到评论元素 comment-' + parentCommentId + ', 滚动定位');
             commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             commentEl.classList.add('highlight');
-            setTimeout(() => { commentEl.classList.remove('highlight'); }, 3000);
+            setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
+          } else if (retryCount < 20) {
+            retryCount++;
+            if (retryCount % 5 === 0) {
+              console.log('[Forum] handleNavigateToPost: 第 ' + retryCount + ' 次重试查找评论元素 comment-' + parentCommentId);
+            }
+            setTimeout(tryScrollToComment, 200);
+          } else {
+            console.log('[Forum] 重试后仍未找到评论元素: comment-' + parentCommentId);
           }
-        }, 300);
+        };
+        setTimeout(tryScrollToComment, 300);
+      } else {
+        console.log('[Forum] 评论未找到, commentId=' + commentId);
+        // 打印所有可用评论ID以便调试
+        const allCommentIds = allComments.map(function(c: any) { return c.id; });
+        console.log('[Forum] 可用评论ID: ' + JSON.stringify(allCommentIds));
+        for (const c of allComments) {
+          if (c.replies && c.replies.length > 0) {
+            const replyIds = c.replies.map(function(r: any) { return r.id; });
+            console.log('[Forum] 评论 ' + c.id + ' 的回复ID: ' + JSON.stringify(replyIds));
+          }
+        }
       }
+    } else {
+      console.log('[Forum] handleNavigateToPost: 帖子评论为空, postId=' + postId);
+    }
+  }
+};
+
+// 防止 onMounted 和 watch 重复触发导航
+let isNavigatingFromQuery = false;
+
+// 处理从消息通知跳转过来的定位（提取为独立函数，供 onMounted 和 watch 共用）
+const navigateFromQuery = async () => {
+  if (isNavigatingFromQuery) return;
+  const targetPostId = route.query.postId;
+  const targetCommentId = route.query.commentId;
+  if (targetPostId) {
+    isNavigatingFromQuery = true;
+    try {
+      await handleNavigateToPost(Number(targetPostId), targetCommentId ? Number(targetCommentId) : null);
+    } finally {
+      isNavigatingFromQuery = false;
     }
   }
 };
@@ -1473,12 +1575,119 @@ onMounted(async () => {
   });
 
   // 处理从消息通知跳转过来的定位
-  const targetPostId = route.query.postId;
-  const targetCommentId = route.query.commentId;
-  if (targetPostId) {
-    await handleNavigateToPost(Number(targetPostId), targetCommentId ? Number(targetCommentId) : null);
-  }
+  await navigateFromQuery();
 });
+
+// 仅滚动到指定评论（不重新导航帖子，适用于帖子已显示但需定位不同评论的场景）
+const navigateToCommentOnly = async (postId: number, commentId: number) => {
+  console.log('[Forum] navigateToCommentOnly: postId=' + postId + ', commentId=' + commentId);
+  const post = posts.value.find(p => p.id === postId);
+  if (!post) {
+    console.log('[Forum] navigateToCommentOnly: 帖子未找到');
+    return;
+  }
+
+  // 确保评论区已展开并加载评论
+  if (!showComments.value[postId] || !post.comments || post.comments.length === 0) {
+    showComments.value[postId] = true;
+    await loadComments(postId);
+    await nextTick();
+    await nextTick();
+  }
+
+  // 评论加载后可能为空，重试一次
+  if (!post.comments || post.comments.length === 0) {
+    console.log('[Forum] navigateToCommentOnly: 评论仍为空，重试加载');
+    await loadComments(postId);
+    await nextTick();
+    await nextTick();
+  }
+
+  // 在排序后的评论中查找目标评论
+  const sortType = commentSort.value[postId] || 'time';
+  const order = commentSortOrder.value[postId] || 'desc';
+  const allComments = [...(post.comments || [])].sort((a, b) => {
+    if (sortType === 'time') {
+      const timeA = new Date(a.createTime).getTime();
+      const timeB = new Date(b.createTime).getTime();
+      return order === 'desc' ? timeB - timeA : timeA - timeB;
+    } else if (sortType === 'likes') {
+      return order === 'desc' ? (b.likeCount || 0) - (a.likeCount || 0) : (a.likeCount || 0) - (b.likeCount || 0);
+    } else if (sortType === 'dislikes') {
+      return order === 'desc' ? (b.dislikeCount || 0) - (a.dislikeCount || 0) : (a.dislikeCount || 0) - (b.dislikeCount || 0);
+    }
+    return 0;
+  });
+
+  // 递归查找评论
+  const found = findCommentInTree(allComments, commentId);
+  const parentCommentId = found ? found.parentCommentId : commentId;
+  const commentIndex = found ? found.index : -1;
+  
+  console.log('[Forum] navigateToCommentOnly: 查找 commentId=' + commentId + ', found=' + (found !== null) + ', parentCommentId=' + parentCommentId + ', index=' + commentIndex);
+  
+  if (commentIndex !== -1) {
+    const targetPage = Math.floor(commentIndex / commentsPerPage) + 1;
+    if ((commentCurrentPage.value[postId] || 1) !== targetPage) {
+      commentCurrentPage.value[postId] = targetPage;
+    }
+    await nextTick();
+    await nextTick();
+    // 带重试的滚动定位
+    let retryCount = 0;
+    const tryScrollToComment = function() {
+      const commentEl = document.getElementById('comment-' + parentCommentId);
+      if (commentEl) {
+        console.log('[Forum] navigateToCommentOnly: 找到 comment-' + parentCommentId + ', 滚动定位');
+        commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        commentEl.classList.add('highlight');
+        setTimeout(function() { commentEl.classList.remove('highlight'); }, 3000);
+      } else if (retryCount < 20) {
+        retryCount++;
+        if (retryCount % 5 === 0) {
+          console.log('[Forum] navigateToCommentOnly: 第 ' + retryCount + ' 次重试');
+        }
+        setTimeout(tryScrollToComment, 200);
+      } else {
+        console.log('[Forum] navigateToCommentOnly: 重试后仍未找到评论元素');
+      }
+    };
+    setTimeout(tryScrollToComment, 200);
+  } else {
+    console.log('[Forum] navigateToCommentOnly: 评论未找到, commentId=' + commentId);
+    const allCommentIds = allComments.map(function(c: any) { return c.id; });
+    console.log('[Forum] navigateToCommentOnly: 可用评论ID: ' + JSON.stringify(allCommentIds));
+  }
+};
+
+// 监听路由 query 变化，支持组件复用时（已在论坛页面时点击通知）的导航定位
+watch(
+  () => route.query.postId,
+  async (newPostId, oldPostId) => {
+    if (newPostId && newPostId !== oldPostId) {
+      isNavigatingFromQuery = false; // 重置标志，允许新的导航
+      await navigateFromQuery();
+    }
+  }
+);
+
+// 单独监听 commentId 变化，处理同一帖子下切换评论的场景
+// 同时避免与 navigateFromQuery 的竞态条件（当 postId 也变化时，navigateFromQuery 已处理评论定位）
+watch(
+  () => route.query.commentId,
+  async (newCommentId, oldCommentId) => {
+    if (newCommentId && newCommentId !== oldCommentId && !isNavigatingFromQuery) {
+      const postId = route.query.postId;
+      if (postId) {
+        // 等待一小段时间，确保 navigateFromQuery 已完成（如果 postId 也变了）
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (!isNavigatingFromQuery) {
+          await navigateToCommentOnly(Number(postId), Number(newCommentId));
+        }
+      }
+    }
+  }
+);
 </script>
 
 <style scoped>

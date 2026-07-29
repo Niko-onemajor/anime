@@ -29,7 +29,14 @@ CREATE TABLE users (
     signature VARCHAR(255),
     favorite VARCHAR(255),
     deleted BOOLEAN NOT NULL DEFAULT false,
-    deleted_at DATETIME
+    deleted_at DATETIME,
+    profile_public BOOLEAN NOT NULL DEFAULT true,
+    show_watch_history BOOLEAN NOT NULL DEFAULT true,
+    show_favorites BOOLEAN NOT NULL DEFAULT true,
+    show_ratings BOOLEAN NOT NULL DEFAULT true,
+    show_posts BOOLEAN NOT NULL DEFAULT true,
+    show_comments BOOLEAN NOT NULL DEFAULT true,
+    show_follows BOOLEAN NOT NULL DEFAULT true
 );
 
 -- 创建动漫表

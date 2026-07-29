@@ -217,6 +217,14 @@ public class UserController {
             data.put("gender", user.getGender());
             data.put("region", user.getRegion());
             data.put("signature", user.getSignature());
+            // 隐私设置
+            data.put("profilePublic", user.getProfilePublic() != null ? user.getProfilePublic() : true);
+            data.put("showWatchHistory", user.getShowWatchHistory() != null ? user.getShowWatchHistory() : true);
+            data.put("showFavorites", user.getShowFavorites() != null ? user.getShowFavorites() : true);
+            data.put("showRatings", user.getShowRatings() != null ? user.getShowRatings() : true);
+            data.put("showPosts", user.getShowPosts() != null ? user.getShowPosts() : true);
+            data.put("showComments", user.getShowComments() != null ? user.getShowComments() : true);
+            data.put("showFollows", user.getShowFollows() != null ? user.getShowFollows() : true);
             response.put("data", data);
 
         return response;
@@ -392,6 +400,35 @@ public class UserController {
             response.put("msg", "令牌刷新失败: " + e.getMessage());
         }
         
+        return response;
+    }
+
+    // 更新隐私设置
+    @PostMapping("/privacy")
+    public Map<String, Object> updatePrivacy(@RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String username = (String) request.get("username");
+            User user = userService.findByUsername(username);
+            if (user == null) {
+                response.put("code", 400);
+                response.put("msg", "用户不存在");
+                return response;
+            }
+            if (request.containsKey("profilePublic")) user.setProfilePublic((Boolean) request.get("profilePublic"));
+            if (request.containsKey("showWatchHistory")) user.setShowWatchHistory((Boolean) request.get("showWatchHistory"));
+            if (request.containsKey("showFavorites")) user.setShowFavorites((Boolean) request.get("showFavorites"));
+            if (request.containsKey("showRatings")) user.setShowRatings((Boolean) request.get("showRatings"));
+            if (request.containsKey("showPosts")) user.setShowPosts((Boolean) request.get("showPosts"));
+            if (request.containsKey("showComments")) user.setShowComments((Boolean) request.get("showComments"));
+            if (request.containsKey("showFollows")) user.setShowFollows((Boolean) request.get("showFollows"));
+            userService.save(user);
+            response.put("code", 200);
+            response.put("msg", "隐私设置更新成功");
+        } catch (Exception e) {
+            response.put("code", 500);
+            response.put("msg", "更新失败：" + e.getMessage());
+        }
         return response;
     }
 

@@ -33,6 +33,7 @@
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-posts' }" @click.prevent="switchTab('my-posts')">我的帖子</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-following' }" @click.prevent="switchTab('my-following')">我的关注</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-followers' }" @click.prevent="switchTab('my-followers')">我的粉丝</a></li>
+            <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'privacy' }" @click.prevent="switchTab('privacy')">隐私设置</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" @click.prevent="handleLogout">退出登录</a></li>
           </ul>
         </div>
@@ -311,6 +312,84 @@
               </div>
             </div>
           </div>
+
+          <!-- 隐私设置 -->
+          <div v-if="activeTab === 'privacy' && !isViewingOtherUser">
+            <h3>隐私设置</h3>
+            <p class="privacy-desc">控制你的个人主页上哪些内容对外可见。关闭后，其他用户将无法查看对应内容。</p>
+            <div class="privacy-list">
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">个人主页公开</span>
+                  <span class="privacy-hint">关闭后，整个个人主页将对其他用户隐藏</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.profilePublic" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">观看记录</span>
+                  <span class="privacy-hint">允许其他用户查看你的观看记录</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.showWatchHistory" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">收藏列表</span>
+                  <span class="privacy-hint">允许其他用户查看你的收藏</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.showFavorites" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">评分记录</span>
+                  <span class="privacy-hint">允许其他用户查看你的评分</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.showRatings" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">帖子列表</span>
+                  <span class="privacy-hint">允许其他用户查看你发布的帖子</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.showPosts" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">评论记录</span>
+                  <span class="privacy-hint">允许其他用户查看你的评论</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.showComments" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="privacy-item">
+                <div class="privacy-info">
+                  <span class="privacy-label">关注/粉丝</span>
+                  <span class="privacy-hint">允许其他用户查看你的关注和粉丝列表</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="privacySettings.showFollows" @change="savePrivacy">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -437,6 +516,34 @@ const followingLoading = ref(false);
 const followersLoading = ref(false);
 const followingSearch = ref('');
 const followersSearch = ref('');
+
+// 隐私设置
+const privacySettings = ref({
+  profilePublic: true,
+  showWatchHistory: true,
+  showFavorites: true,
+  showRatings: true,
+  showPosts: true,
+  showComments: true,
+  showFollows: true
+});
+
+const savePrivacy = async () => {
+  try {
+    const res = await api.post('/api/user/privacy', {
+      username: username.value,
+      ...privacySettings.value
+    });
+    if (res.data.code === 200) {
+      ElMessage.success('隐私设置已保存');
+    } else {
+      ElMessage.error(res.data.msg || '保存失败');
+    }
+  } catch (e) {
+    console.error('保存隐私设置失败:', e);
+    ElMessage.error('保存失败');
+  }
+};
 
 // 过滤后的关注列表
 const filteredFollowingList = computed(() => {
@@ -1091,6 +1198,16 @@ onMounted(async () => {
             gender.value = userData.gender || '';
             region.value = userData.region || '';
             signature.value = userData.signature || '';
+            // 加载隐私设置
+            privacySettings.value = {
+              profilePublic: userData.profilePublic !== undefined ? userData.profilePublic : true,
+              showWatchHistory: userData.showWatchHistory !== undefined ? userData.showWatchHistory : true,
+              showFavorites: userData.showFavorites !== undefined ? userData.showFavorites : true,
+              showRatings: userData.showRatings !== undefined ? userData.showRatings : true,
+              showPosts: userData.showPosts !== undefined ? userData.showPosts : true,
+              showComments: userData.showComments !== undefined ? userData.showComments : true,
+              showFollows: userData.showFollows !== undefined ? userData.showFollows : true
+            };
             
             if (userData.avatar) {
                 // 直接使用后端返回的头像URL，因为后端应该已经返回了完整的阿里云URL
@@ -2023,4 +2140,83 @@ onMounted(async () => {
 .follow-actions { display: flex; gap: 8px; }
 .btn-following { background: #e0e0e0; color: #666; border: 1px solid #ddd; }
 .btn-following:hover { background: #ff6b6b; color: white; border-color: #ff6b6b; }
+
+/* 隐私设置样式 */
+.privacy-desc {
+  color: #999;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.privacy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.privacy-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.privacy-item:last-child {
+  border-bottom: none;
+}
+.privacy-info {
+  flex: 1;
+}
+.privacy-label {
+  display: block;
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.privacy-hint {
+  font-size: 13px;
+  color: #999;
+}
+
+/* 切换开关 */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 26px;
+}
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #ff6b6b;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+}
 </style>

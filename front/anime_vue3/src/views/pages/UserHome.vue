@@ -341,6 +341,17 @@ const userInfo = ref({
   avatar: ''
 });
 
+// 隐私设置
+const privacySettings = ref({
+  profilePublic: true,
+  showWatchHistory: true,
+  showFavorites: true,
+  showRatings: true,
+  showPosts: true,
+  showComments: true,
+  showFollows: true
+});
+
 // 当前登录用户
 const currentUser = ref(localStorage.getItem('username') || '');
 const currentUserId = ref(0);

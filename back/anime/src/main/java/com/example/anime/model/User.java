@@ -58,6 +58,28 @@ public class User implements UserDetails {
     @Column
     private String activationCode;
 
+    // 隐私设置
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean profilePublic = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean showWatchHistory = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean showFavorites = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean showRatings = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean showPosts = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean showComments = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean showFollows = true;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptyList();

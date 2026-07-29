@@ -557,21 +557,12 @@ const getImageUrl = (url: string): string => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  // 如果是本地文件路径，转换为HTTP URL
-  if (url.startsWith('file:///')) {
-    // 提取文件名
-    const filename = url.split('/').pop();
-    return `http://localhost:8080/covers/${filename}`;
-  }
-  // 如果是本地文件路径（Windows或Unix风格），转换为HTTP URL
-  if (url.includes(':')) {
-    // 提取文件名，同时处理正斜杠和反斜杠
-    const parts = url.split(/[\\/]/);
-    const filename = parts.pop();
-    return `http://localhost:8080/covers/${filename}`;
-  }
-  // 默认返回原路径
-  return url;
+  // 提取文件名，同时处理正斜杠和反斜杠
+  const parts = url.split(/[\\/]/);
+  const filename = parts.pop();
+  if (url.includes('avatars')) return `/avatars/${filename}`;
+  if (url.includes('covers')) return `/covers/${filename}`;
+  return `/covers/${filename}`;
 };
 
 // 保存筛选状态到localStorage

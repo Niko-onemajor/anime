@@ -98,7 +98,7 @@
             <p>该用户已隐藏此内容</p>
           </div>
           <!-- 个人资料 -->
-          <div v-if="activeTab === 'profile'" class="info-grid">
+          <div v-else-if="activeTab === 'profile'" class="info-grid">
             <div class="info-card">
               <div class="info-label">用户名</div>
               <div class="info-value">{{ userInfo.username }}</div>
@@ -134,7 +134,7 @@
           </div>
 
           <!-- 观看记录 -->
-          <div v-if="activeTab === 'watchHistory'">
+          <div v-else-if="activeTab === 'watchHistory'">
             <div v-if="watchHistoryLoading" class="loading">加载中...</div>
             <div v-else-if="watchHistory.length === 0" class="empty">暂无观看记录</div>
             <div v-else>
@@ -158,7 +158,7 @@
           </div>
 
           <!-- 收藏 -->
-          <div v-if="activeTab === 'favorites'">
+          <div v-else-if="activeTab === 'favorites'">
             <div v-if="favoritesLoading" class="loading">加载中...</div>
             <div v-else-if="favorites.length === 0" class="empty">暂无收藏</div>
             <div v-else>
@@ -182,7 +182,7 @@
           </div>
 
           <!-- 评分 -->
-          <div v-if="activeTab === 'ratings'">
+          <div v-else-if="activeTab === 'ratings'">
             <div v-if="ratingsLoading" class="loading">加载中...</div>
             <div v-else-if="ratings.length === 0" class="empty">暂无评分</div>
             <div v-else>
@@ -207,7 +207,7 @@
           </div>
 
           <!-- 帖子 -->
-          <div v-if="activeTab === 'posts'">
+          <div v-else-if="activeTab === 'posts'">
             <div v-if="postsLoading" class="loading">加载中...</div>
             <div v-else-if="posts.length === 0" class="empty">暂无发布的帖子</div>
             <div v-else>
@@ -233,7 +233,7 @@
           </div>
 
           <!-- 评论 -->
-          <div v-if="activeTab === 'comments'">
+          <div v-else-if="activeTab === 'comments'">
             <div v-if="commentsLoading" class="loading">加载中...</div>
             <div v-else-if="comments.length === 0" class="empty">暂无评论记录</div>
             <div v-else>
@@ -261,7 +261,7 @@
           </div>
 
           <!-- 关注 -->
-          <div v-if="activeTab === 'following'">
+          <div v-else-if="activeTab === 'following'">
             <div v-if="followingLoading" class="loading">加载中...</div>
             <div v-else-if="followingList.length === 0" class="empty">暂无关注</div>
             <div v-else>
@@ -285,7 +285,7 @@
           </div>
 
           <!-- 粉丝 -->
-          <div v-if="activeTab === 'followers'">
+          <div v-else-if="activeTab === 'followers'">
             <div v-if="followersLoading" class="loading">加载中...</div>
             <div v-else-if="followerList.length === 0" class="empty">暂无粉丝</div>
             <div v-else>

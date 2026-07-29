@@ -416,30 +416,17 @@ const getImageUrl = (url: string): string => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  // 如果是本地文件路径，转换为HTTP URL
-  if (url.startsWith('file:///')) {
-    // 提取文件名
-    const filename = url.split('/').pop();
-    return `http://localhost:8080/covers/${filename}`;
-  }
-  // 如果是Windows本地路径，转换为HTTP URL
-  if (url.includes(':')) {
-    // 提取文件名，同时处理正斜杠和反斜杠
-    const parts = url.split(/[\\/]/);
-    const filename = parts.pop();
-    return `http://localhost:8080/covers/${filename}`;
-  }
-  // 如果是本地路径，使用本地存储路径
-  if (url.startsWith('/src/images/')) {
-    const filename = url.split('/').pop();
-    return `http://localhost:8080/covers/${filename?.replace('.jpg', '.webp')}`;
-  }
   // 如果是上传路径，使用代理路径
   if (url.startsWith('/uploads/')) {
     return url;
   }
-  // 默认返回原路径
-  return url;
+  // 提取文件名，同时处理正斜杠和反斜杠
+  const parts = url.split(/[\\/]/);
+  const filename = parts.pop();
+  if (url.includes('avatars')) return `/avatars/${filename}`;
+  if (url.includes('covers')) return `/covers/${filename}`;
+  // 默认返回covers
+  return `/covers/${filename}`;
 };
 
 // 处理图片加载错误

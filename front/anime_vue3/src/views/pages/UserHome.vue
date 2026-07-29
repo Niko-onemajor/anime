@@ -12,6 +12,9 @@
           <li><a href="/profile">个人中心</a></li>
           <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
+        <button class="nav-search-btn" @click="showSearchModal = true" title="搜索用户">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
       </div>
     </nav>
 
@@ -69,12 +72,13 @@
         <!-- 标签导航 -->
         <div class="tab-nav">
           <button
-            v-for="tab in visibleTabs"
+            v-for="tab in tabs"
             :key="tab.key"
             class="tab-btn"
-            :class="{ active: activeTab === tab.key }"
+            :class="{ active: activeTab === tab.key, locked: !isSelf && isTabHidden(tab.key) }"
             @click="switchTab(tab.key)"
           >
+            <span v-if="!isSelf && isTabHidden(tab.key)" class="tab-lock-icon">🔒</span>
             {{ tab.label }}
           </button>
         </div>
@@ -321,6 +325,31 @@
       </div>
     </footer>
   </div>
+
+  <!-- 用户搜索弹窗 -->
+  <div class="search-overlay" v-if="showSearchModal" @click.self="showSearchModal = false">
+    <div class="search-modal">
+      <div class="search-modal-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input ref="searchInputRef" v-model="searchKeyword" class="search-modal-input" placeholder="搜索用户..." @input="onSearchInput" @keydown.esc="showSearchModal = false" />
+        <button class="search-modal-close" @click="showSearchModal = false">&times;</button>
+      </div>
+      <div class="search-modal-body">
+        <div v-if="searchLoading" class="search-loading">搜索中...</div>
+        <div v-else-if="searchResults.length === 0 && searchKeyword.trim()" class="search-empty">未找到相关用户</div>
+        <div v-else-if="searchResults.length === 0 && !searchKeyword.trim()" class="search-hint">输入用户名开始搜索</div>
+        <div v-else class="search-results">
+          <div v-for="user in searchResults" :key="user.id" class="search-result-item" @click="goToUserHome(user.username)">
+            <img :src="getImageUrl(user.avatar)" :alt="user.username" class="search-result-avatar" />
+            <div class="search-result-info">
+              <span class="search-result-name">{{ user.username }}</span>
+              <span class="search-result-sig">{{ user.signature || '这个人很懒，什么都没写' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -332,6 +361,36 @@ import { ElMessage } from 'element-plus';
 
 const route = useRoute();
 const router = useRouter();
+
+// 用户搜索
+const showSearchModal = ref(false);
+const searchKeyword = ref('');
+const searchResults = ref<any[]>([]);
+const searchLoading = ref(false);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+const onSearchInput = () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  const keyword = searchKeyword.value.trim();
+  if (!keyword) {
+    searchResults.value = [];
+    return;
+  }
+  searchLoading.value = true;
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await axios.get('http://localhost:8080/api/user/search', { params: { keyword } });
+      if (res.data.code === 200) {
+        searchResults.value = res.data.data || [];
+      }
+    } catch (e) {
+      console.error('搜索用户失败:', e);
+    } finally {
+      searchLoading.value = false;
+    }
+  }, 300);
+};
 
 const loading = ref(true);
 const isAdmin = ref(false);
@@ -476,10 +535,6 @@ const visibleTabs = computed(() => {
 
 // 切换 tab 时重置页码并加载数据
 const switchTab = (key: string) => {
-  // 如果当前是查看他人主页且该tab被隐藏，则不允许切换
-  if (!isSelf.value && isTabHidden(key)) {
-    return;
-  }
   activeTab.value = key;
   // 重置分页
   if (key === 'following' && followingList.value.length === 0) {
@@ -1034,6 +1089,17 @@ onMounted(async () => {
   background: #ff6b6b;
   color: white;
 }
+.tab-btn.locked {
+  opacity: 0.6;
+}
+.tab-btn.locked.active {
+  background: #bbb;
+  color: white;
+}
+.tab-lock-icon {
+  font-size: 11px;
+  margin-right: 3px;
+}
 
 /* 内容区 */
 .tab-content {
@@ -1286,7 +1352,7 @@ onMounted(async () => {
 /* 隐私保护提示 */
 .privacy-lock {
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -1307,7 +1373,16 @@ onMounted(async () => {
 }
 .privacy-hidden-tip {
   text-align: center;
-  padding: 40px 20px;
+  padding: 60px 20px;
+}
+.privacy-hidden-tip .privacy-lock-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.privacy-hidden-tip p {
+  font-size: 15px;
+  color: #999;
+  margin: 0;
 }
 
 /* 头像预览弹窗 */
@@ -1373,6 +1448,139 @@ onMounted(async () => {
   margin: 0;
   font-size: 14px;
   color: #ccc;
+}
+
+/* 导航栏搜索按钮 */
+.nav-search-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.nav-search-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* 搜索弹窗 */
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  padding-top: 15vh;
+  animation: fadeIn 0.2s ease;
+}
+.search-modal {
+  background: white;
+  border-radius: 12px;
+  width: 440px;
+  max-width: 90vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  animation: searchSlideIn 0.25s ease;
+}
+@keyframes searchSlideIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.search-modal-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 12px;
+}
+.search-modal-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: #333;
+  background: transparent;
+}
+.search-modal-input::placeholder {
+  color: #bbb;
+}
+.search-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+.search-modal-close:hover {
+  color: #333;
+}
+.search-modal-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0;
+}
+.search-loading, .search-empty, .search-hint {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 14px;
+}
+.search-results {
+  display: flex;
+  flex-direction: column;
+}
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.search-result-item:hover {
+  background: #f5f5f5;
+}
+.search-result-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+.search-result-info {
+  flex: 1;
+  min-width: 0;
+}
+.search-result-name {
+  display: block;
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+}
+.search-result-sig {
+  display: block;
+  font-size: 13px;
+  color: #999;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {

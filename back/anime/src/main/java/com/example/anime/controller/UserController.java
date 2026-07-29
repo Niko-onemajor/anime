@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 @Slf4j
 @RestController
@@ -428,6 +430,35 @@ public class UserController {
         } catch (Exception e) {
             response.put("code", 500);
             response.put("msg", "更新失败：" + e.getMessage());
+        }
+        return response;
+    }
+
+    // 搜索用户
+    @GetMapping("/search")
+    public Map<String, Object> searchUsers(@RequestParam String keyword) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (keyword == null || keyword.trim().isEmpty()) {
+                response.put("code", 200);
+                response.put("data", new ArrayList<>());
+                return response;
+            }
+            List<User> users = userService.findByUsernameContaining(keyword.trim());
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (User user : users) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", user.getId());
+                item.put("username", user.getUsername());
+                item.put("avatar", user.getAvatar());
+                item.put("signature", user.getSignature());
+                result.add(item);
+            }
+            response.put("code", 200);
+            response.put("data", result);
+        } catch (Exception e) {
+            response.put("code", 500);
+            response.put("msg", "搜索失败：" + e.getMessage());
         }
         return response;
     }

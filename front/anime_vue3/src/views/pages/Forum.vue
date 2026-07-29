@@ -675,29 +675,25 @@ const updateUserInteractionStatus = async () => {
       post.dislikes = [];
     });
 
-    // 从后端获取用户对每个帖子的互动状态
-    for (const post of posts.value) {
-      try {
-        const res = await axios.post('http://localhost:8080/api/post/interaction-status', {
-          postId: post.id,
-          username: currentUser.value
-        });
-        
+    // 并行获取所有帖子的互动状态（避免串行N+1问题）
+    const promises = posts.value.map(post =>
+      axios.post('http://localhost:8080/api/post/interaction-status', {
+        postId: post.id,
+        username: currentUser.value
+      }).then(res => {
         if (res.data.code === 200) {
           const interactionType = res.data.data;
-          // 根据互动类型更新前端状态
           if (interactionType === 1) {
-            // 点赞
             post.likes.push(currentUser.value);
           } else if (interactionType === 2) {
-            // 点踩
             post.dislikes.push(currentUser.value);
           }
         }
-      } catch (error) {
+      }).catch(error => {
         console.error(`获取帖子${post.id}的互动状态失败：`, error);
-      }
-    }
+      })
+    );
+    await Promise.all(promises);
   } catch (error) {
     console.error('更新用户互动状态失败：', error);
   }

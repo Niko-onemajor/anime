@@ -94,6 +94,16 @@ public class AnimeController {
         return response;
     }
 
+    // 批量获取所有动漫的观看次数（一次请求替代N次）
+    @GetMapping("/watch-counts")
+    public Map<String, Object> getAllAnimeWatchCounts() {
+        Map<String, Object> response = new HashMap<>();
+        Map<Long, Integer> watchCounts = animeService.getAllAnimeWatchCounts();
+        response.put("code", 200);
+        response.put("data", watchCounts);
+        return response;
+    }
+
     // 按年份排序获取动漫
     @GetMapping("/year")
     public List<Anime> getAnimesByYear() {

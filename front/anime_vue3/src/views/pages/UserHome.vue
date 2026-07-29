@@ -522,14 +522,12 @@ const loadUserProfile = async (username: string) => {
 const loadFollowStatus = async () => {
   if (!userInfo.value.id) return;
   try {
-    const fanRes = await axios.get('http://localhost:8080/api/follow/follower-count', {
-      params: { userId: userInfo.value.id }
-    });
+    // 并行请求关注数和粉丝数
+    const [fanRes, followRes] = await Promise.all([
+      axios.get('http://localhost:8080/api/follow/follower-count', { params: { userId: userInfo.value.id } }),
+      axios.get('http://localhost:8080/api/follow/following-count', { params: { userId: userInfo.value.id } })
+    ]);
     if (fanRes.data?.code === 200) followerCount.value = fanRes.data.data.count || 0;
-
-    const followRes = await axios.get('http://localhost:8080/api/follow/following-count', {
-      params: { userId: userInfo.value.id }
-    });
     if (followRes.data?.code === 200) followingCount.value = followRes.data.data.count || 0;
 
     if (currentUserId.value && currentUserId.value !== userInfo.value.id) {

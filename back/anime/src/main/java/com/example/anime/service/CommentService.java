@@ -291,7 +291,6 @@ public class CommentService {
     
     // 获取帖子的评论数（包括所有回复）
     public int getCommentCountByPostId(Long postId) {
-        List<Comment> comments = commentRepository.findByPostId(postId);
-        return comments.size();
+        return (int) commentRepository.countByPostId(postId);
     }
 }

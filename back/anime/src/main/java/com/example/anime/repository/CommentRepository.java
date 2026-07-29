@@ -18,4 +18,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     // 根据帖子ID和parentId为null查询顶级评论
     List<Comment> findByPostIdAndParentIdIsNull(Long postId);
 
+    // 统计帖子的评论数
+    long countByPostId(Long postId);
 }

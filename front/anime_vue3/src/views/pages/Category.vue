@@ -254,17 +254,20 @@ const resetFilterState = () => {
 const loadAnimeData = async () => {
   try {
     isLoading.value = true;
-    const response = await api.get('/api/anime/list');
-    const data = response.data;
+    // 并行请求：动漫列表 + 观看次数批量接口
+    const [animeRes, watchCountsRes] = await Promise.all([
+      api.get('/api/anime/list'),
+      api.get('/api/anime/watch-counts')
+    ]);
+    
+    const data = animeRes.data;
     animes.value = Array.isArray(data) ? data : [];
     
-    // 为每个动漫获取观看次数
-    for (let anime of animes.value) {
-      try {
-        const watchCountRes = await api.get(`/api/anime/watch-count/${anime.id}`);
-        anime.watchCount = watchCountRes.data.watchCount || 0;
-      } catch {
-        anime.watchCount = 0;
+    // 使用批量接口返回的观看次数
+    if (watchCountsRes.data.code === 200 && watchCountsRes.data.data) {
+      const watchCounts = watchCountsRes.data.data;
+      for (let anime of animes.value) {
+        anime.watchCount = watchCounts[anime.id] || 0;
       }
     }
   } catch (error) {

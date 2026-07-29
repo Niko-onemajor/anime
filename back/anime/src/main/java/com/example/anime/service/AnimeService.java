@@ -224,6 +224,17 @@ public class AnimeService {
         return count;
     }
 
+    // 批量获取所有动漫的观看次数（一次查询，避免N+1问题）
+    public Map<Long, Integer> getAllAnimeWatchCounts() {
+        List<WatchHistory> allWatchHistories = watchHistoryRepository.findAll();
+        Map<Long, Integer> countMap = new HashMap<>();
+        for (WatchHistory history : allWatchHistories) {
+            Long animeId = history.getAnimeId();
+            countMap.put(animeId, countMap.getOrDefault(animeId, 0) + 1);
+        }
+        return countMap;
+    }
+
     // 按年份排序获取动漫（非删除）
     public List<Anime> getAnimesByYear() {
         return animeRepository.findByDeletedFalseOrderByYearDesc();

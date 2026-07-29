@@ -20,7 +20,10 @@
       <div class="profile-content">
         <!-- 侧边栏 -->
         <div class="sidebar">
-          <h3>{{ isViewingOtherUser ? username + '的个人主页' : '个人中心' }}</h3>
+          <div class="sidebar-header">
+            <h3>{{ isViewingOtherUser ? username + '的个人主页' : '个人中心' }}</h3>
+            <a v-if="!isViewingOtherUser" :href="'/user/' + username" class="home-link" title="访问个人主页">访问主页 →</a>
+          </div>
           <ul class="sidebar-menu">
             <li><a href="#" :class="{ active: activeTab === 'profile' }" @click.prevent="switchTab('profile')">个人资料</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'account-security' }" @click.prevent="switchTab('account-security')">修改密码</a></li>
@@ -1224,6 +1227,30 @@ onMounted(async () => {
 .sidebar h3 {
   margin-bottom: 20px;
   color: #333;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+}
+
+.home-link {
+  font-size: 13px;
+  color: #ff6b6b;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.home-link:hover {
+  color: #ff5252;
+  text-decoration: underline;
 }
 
 .sidebar-menu {

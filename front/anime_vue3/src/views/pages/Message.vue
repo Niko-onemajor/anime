@@ -263,37 +263,40 @@ const loadNotifications = async () => {
 
   try {
     isLoading.value = true;
-    // 获取当前用户ID
-    const userRes = await api.get('/api/user/info', { params: { username } });
+    // 并行请求：用户信息 + 通知列表
+    const [userRes, notifRes] = await Promise.all([
+      api.get('/api/user/info', { params: { username } }),
+      api.get('/api/notifications/list', { params: { username } })
+    ]);
+    
     if (userRes.data.code === 200) {
       currentUserId.value = userRes.data.data.id;
     }
     
-    const response = await api.get('/api/notifications/list', {
-      params: { username }
-    });
-    if (response.data.code === 200) {
-      notifications.value = response.data.data || [];
-      navUnreadCount.value = response.data.unreadCount || 0;
-      // 始终同步通知数据（清理孤儿通知 + 补充遗漏的通知）
-      try {
-        const syncRes = await api.post('/api/notifications/sync');
-        if (syncRes.data.code === 200) {
-          // 如果有清理或新增，重新加载通知列表
-          if (syncRes.data.count > 0 || syncRes.data.cleanupCount > 0 || syncRes.data.fixCount > 0) {
+    if (notifRes.data.code === 200) {
+      notifications.value = notifRes.data.data || [];
+      navUnreadCount.value = notifRes.data.unreadCount || 0;
+    }
+    
+    // 私信会话与同步操作并行执行（非阻塞）
+    Promise.all([
+      loadDmConversations(),
+      // 同步通知（后台执行，不阻塞页面渲染）
+      (async () => {
+        try {
+          const syncRes = await api.post('/api/notifications/sync');
+          if (syncRes.data.code === 200 && (syncRes.data.count > 0 || syncRes.data.cleanupCount > 0 || syncRes.data.fixCount > 0)) {
             const reloadRes = await api.get('/api/notifications/list', { params: { username } });
             if (reloadRes.data.code === 200) {
               notifications.value = reloadRes.data.data || [];
               navUnreadCount.value = reloadRes.data.unreadCount || 0;
             }
           }
+        } catch (e) {
+          console.error('同步通知失败:', e);
         }
-      } catch (e) {
-        console.error('同步通知失败:', e);
-      }
-    }
-    // 加载私信会话
-    await loadDmConversations();
+      })()
+    ]).catch(e => console.error('后台加载失败:', e));
   } catch (error) {
     console.error('获取通知失败:', error);
   } finally {

@@ -461,6 +461,13 @@ onMounted(() => {
   min-width: 200px;
 }
 
+.search-input:focus,
+.form-input:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+}
+
 .search-btn {
   padding: 8px 16px;
   background: #ff6b6b;
@@ -624,12 +631,17 @@ onMounted(() => {
   background: #45a049;
 }
 
+.restore-btn:active,
+.hard-delete-btn:active {
+  transform: scale(0.97);
+}
+
 .hard-delete-btn {
   flex: 1;
   padding: 8px 16px;
   background: #f44336;
   color: white;
-  border: none;
+  border: 1px dashed #d32f2f;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
@@ -645,6 +657,12 @@ onMounted(() => {
   padding: 60px 20px;
   color: #999;
   font-size: 18px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
 }
 
 /* 分页样式 */

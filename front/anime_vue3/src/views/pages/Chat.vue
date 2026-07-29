@@ -459,6 +459,10 @@ onUnmounted(() => {
   border-bottom: 1px solid #f5f5f5;
 }
 
+.conversation-item:last-child {
+  border-bottom: none;
+}
+
 .conversation-item:hover {
   background: #fafafa;
 }
@@ -612,6 +616,7 @@ onUnmounted(() => {
   background: #f0f0f0;
   cursor: pointer;
   transition: transform 0.2s;
+  user-select: none;
 }
 
 .chat-header-avatar:hover {
@@ -623,6 +628,7 @@ onUnmounted(() => {
   font-weight: 500;
   color: #333;
   cursor: pointer;
+  user-select: none;
 }
 
 .chat-header-name:hover {
@@ -636,6 +642,19 @@ onUnmounted(() => {
   padding: 20px;
   background: #fafafa;
   scroll-behavior: smooth;
+}
+
+.message-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
 }
 
 .no-messages {
@@ -669,6 +688,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   border-radius: 12px;
   position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
 }
 
 .message-item.sent .message-bubble {
@@ -724,6 +744,7 @@ onUnmounted(() => {
   font-family: inherit;
   transition: border-color 0.3s;
   line-height: 1.5;
+  max-height: 120px;
 }
 
 .message-input:focus {
@@ -738,7 +759,7 @@ onUnmounted(() => {
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.3s, opacity 0.3s;
   white-space: nowrap;
   flex-shrink: 0;
 }

@@ -676,6 +676,14 @@ onUnmounted(() => {
   min-width: 200px;
 }
 
+.search-input:focus,
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+}
+
 .search-btn {
   padding: 8px 16px;
   background: #ff6b6b;
@@ -740,12 +748,25 @@ onUnmounted(() => {
   margin-top: 20px;
 }
 
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 16px;
+}
+
 .post-item {
   background: #f9f9f9;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.post-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.12);
 }
 
 .post-header {
@@ -799,6 +820,8 @@ onUnmounted(() => {
   margin-bottom: 15px;
   line-height: 1.5;
   color: #333;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .post-stats {
@@ -864,6 +887,15 @@ onUnmounted(() => {
 
 .comments-btn:hover {
   background: #45a049;
+}
+
+/* 按钮 :active 样式 */
+.search-btn:active,
+.clear-btn:active,
+.sort-direction-btn:active,
+.delete-btn:active,
+.comments-btn:active {
+  transform: scale(0.97);
 }
 
 /* 评论管理样式 */
@@ -1192,6 +1224,12 @@ onUnmounted(() => {
   
   .dialog-content {
     width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .replies-list {
+    margin-left: 16px;
   }
 }
 

@@ -646,7 +646,8 @@ watch(animeId, () => {
 
 .detail-meta {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 10px 20px;
   margin-bottom: 20px;
   font-size: 14px;
   color: #666;
@@ -675,6 +676,8 @@ watch(animeId, () => {
   color: #666;
   line-height: 1.6;
   margin: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .action-buttons {
@@ -696,6 +699,8 @@ watch(animeId, () => {
 
 .watch-btn:hover {
   background: #ff5252;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  transform: translateY(-1px);
 }
 
 .favorite-btn {
@@ -712,6 +717,8 @@ watch(animeId, () => {
 
 .favorite-btn:hover {
   background: #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .favorite-btn.active {
@@ -756,6 +763,8 @@ watch(animeId, () => {
   background: #ff6b6b;
   color: #fff;
   border-color: #ff6b6b;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  transform: translateY(-1px);
 }
 
 /* 相关推荐 */
@@ -782,6 +791,7 @@ watch(animeId, () => {
   overflow: hidden;
   transition: transform 0.3s, box-shadow 0.3s;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .related-item:hover {
@@ -849,6 +859,24 @@ watch(animeId, () => {
   margin-bottom: 30px;
 }
 
+.loading-message::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 20px;
+  border: 4px solid #f0f0f0;
+  border-top-color: #ff6b6b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* 下架提示 */
 .offline-message {
   text-align: center;
@@ -865,22 +893,6 @@ watch(animeId, () => {
   font-size: 18px;
   color: #666;
   margin-bottom: 30px;
-}
-
-.back-btn {
-  background: #4a90e2;
-  color: #fff;
-  border: none;
-  padding: 12px 30px;
-  border-radius: 4px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.back-btn:hover {
-  background: #357abd;
 }
 
 /* 版权信息样式 */
@@ -911,7 +923,7 @@ watch(animeId, () => {
   }
 
   .nav-link {
-    margin-left: 20px;
+    margin-left: 12px;
   }
 
   .detail-content {
@@ -959,29 +971,6 @@ watch(animeId, () => {
 
   .related-image {
     height: 200px;
-  }
-
-  .comment-controls {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .comment-item {
-    padding: 10px;
-  }
-
-  .comment-textarea {
-    min-height: 80px;
-  }
-
-  .profile-item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .profile-label {
-    margin-bottom: 5px;
   }
 
   .footer-content {

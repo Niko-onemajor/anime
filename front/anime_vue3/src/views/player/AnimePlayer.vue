@@ -1412,11 +1412,13 @@ h1 {
   background: #000;
   border-radius: 8px;
   overflow: hidden;
+  aspect-ratio: 16/9;
 }
 
 .video-player {
   width: 100%;
   height: 500px;
+  aspect-ratio: 16/9;
 }
 
 .episode-list {
@@ -1453,9 +1455,9 @@ h1 {
 }
 
 .episodes button.active {
-  background: #4caf50;
+  background: #ff6b6b;
   color: #fff;
-  border-color: #4caf50;
+  border-color: #ff6b6b;
 }
 
 /* 评分区域样式 */
@@ -1493,6 +1495,10 @@ h1 {
   color: #ff6b6b;
 }
 
+.average-rating .star {
+  cursor: default;
+}
+
 .stars {
   display: flex;
   gap: 5px;
@@ -1509,8 +1515,14 @@ h1 {
   color: #ffd700;
 }
 
+.stars.interactive .star {
+  cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+}
+
 .stars.interactive .star:hover {
   color: #ffd700;
+  transform: scale(1.2);
 }
 
 .user-rating {
@@ -1545,13 +1557,6 @@ h1 {
   border-bottom: 1px solid #eee;
 }
 
-/* 评论分页 */
-.comment-pagination {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .page-btn {
   padding: 5px 12px;
   border: 1px solid #ddd;
@@ -1564,6 +1569,7 @@ h1 {
 }
 
 .page-btn:hover:not(:disabled) {
+  background: #fff5f5;
   border-color: #ff6b6b;
   color: #ff6b6b;
 }
@@ -1664,6 +1670,12 @@ h1 {
   font-size: 14px;
 }
 
+.comment-textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+}
+
 .comment-textarea.small {
   min-height: 80px;
 }
@@ -1687,6 +1699,13 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.comments-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 15px;
 }
 
 .comment-item {
@@ -1714,6 +1733,12 @@ h1 {
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.author-avatar:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
 }
 
 .author-avatar.small {
@@ -1724,6 +1749,11 @@ h1 {
 .author-name {
   font-weight: bold;
   color: #333;
+}
+
+.author-name:hover {
+  color: #ff6b6b;
+  text-decoration: underline;
 }
 
 .comment-time {
@@ -1776,16 +1806,6 @@ h1 {
 }
 
 .delete-btn:hover {
-  background: #f44336;
-  color: #fff;
-}
-
-.delete-btn.small {
-  color: #f44336;
-  border-color: #f44336;
-}
-
-.delete-btn.small:hover {
   background: #f44336;
   color: #fff;
 }
@@ -1939,6 +1959,7 @@ h1 {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease;
 }
 
 .dialog-content {
@@ -1947,6 +1968,17 @@ h1 {
   width: 90%;
   max-width: 600px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .dialog-header {

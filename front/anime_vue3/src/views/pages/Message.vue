@@ -532,6 +532,7 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .tab-btn {
@@ -611,6 +612,9 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 300px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .loading-spinner {
@@ -631,6 +635,7 @@ onMounted(() => {
 .loading-container p {
   font-size: 16px;
   color: #666;
+  margin: 0;
 }
 
 /* 空状态 */
@@ -642,18 +647,18 @@ onMounted(() => {
   min-height: 300px;
   background: white;
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .empty-text {
   font-size: 16px;
-  color: #999;
+  color: #888;
 }
 
 /* 通知列表 */
 .notification-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
   background: white;
   border-radius: 8px;
   overflow: hidden;
@@ -676,6 +681,8 @@ onMounted(() => {
 
 .notification-item:hover {
   background: #fafafa;
+  transform: translateX(2px);
+  transition: all 0.2s ease;
 }
 
 .notification-item.unread {
@@ -713,12 +720,12 @@ onMounted(() => {
   color: #333;
   margin: 0 0 6px 0;
   line-height: 1.5;
-  word-break: break-all;
+  word-break: break-word;
 }
 
 .notification-time {
   font-size: 13px;
-  color: #999;
+  color: #888;
 }
 
 .unread-dot {
@@ -744,7 +751,7 @@ onMounted(() => {
 .page-btn {
   padding: 6px 14px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   background: white;
   color: #666;
   font-size: 14px;
@@ -819,6 +826,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease;
 }
 
 .confirm-modal {
@@ -828,6 +836,7 @@ onMounted(() => {
   max-width: 90%;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  animation: scaleIn 0.2s ease;
 }
 
 .confirm-header {
@@ -894,5 +903,43 @@ onMounted(() => {
 
 .confirm-ok-btn:hover {
   background: #e55a5a;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 0 10px;
+  }
+
+  .message-header h2 {
+    font-size: 20px;
+  }
+
+  .tab-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .notification-item {
+    padding: 12px 14px;
+  }
+
+  .notification-message {
+    font-size: 14px;
+  }
+
+  .page-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
 }
 </style>

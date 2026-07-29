@@ -1265,6 +1265,9 @@ onMounted(async () => {
   color: white;
   padding: 10px 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .navbar-container {
@@ -1395,6 +1398,14 @@ onMounted(async () => {
   color: white;
 }
 
+.sidebar-menu li:last-child a {
+  color: #e74c3c;
+}
+
+.sidebar-menu li:last-child a:hover {
+  background-color: #fde8e8;
+}
+
 /* 主内容区域样式 */
 .main-content {
   flex: 1;
@@ -1462,6 +1473,23 @@ onMounted(async () => {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  background: #fff;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
 }
 
 /* 密码输入框样式 */
@@ -1603,11 +1631,37 @@ onMounted(async () => {
   color: #666;
 }
 
+.loading::before {
+  content: "";
+  display: block;
+  width: 30px;
+  height: 30px;
+  margin: 0 auto 12px;
+  border: 3px solid #eee;
+  border-top-color: #ff6b6b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .no-history {
   text-align: center;
-  padding: 40px;
+  padding: 60px 20px;
   color: #999;
   font-size: 16px;
+}
+
+.no-history::before {
+  content: "📭";
+  display: block;
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.4;
 }
 
 .watch-history-list {
@@ -1735,13 +1789,13 @@ onMounted(async () => {
   gap: 10px;
 }
 
-.btn-danger {
-  background-color: #3498db;
+.btn-warning {
+  background-color: #f39c12;
   color: white;
 }
 
-.btn-danger:hover {
-  background-color: #2980b9;
+.btn-warning:hover {
+  background-color: #e67e22;
 }
 
 /* 响应式设计 */
@@ -2013,6 +2067,12 @@ onMounted(async () => {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dialog-content {
@@ -2021,6 +2081,12 @@ onMounted(async () => {
   width: 90%;
   max-width: 600px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .dialog-header {
@@ -2131,7 +2197,7 @@ onMounted(async () => {
 
 /* 关注/粉丝列表样式 */
 .follow-list { margin-top: 20px; max-height: 500px; overflow-y: auto; }
-.follow-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+.follow-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; transition: background-color 0.2s; }
 .follow-item:hover { background-color: #f9f9f9; }
 .follow-info { display: flex; align-items: center; gap: 15px; flex: 1; }
 .follow-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }

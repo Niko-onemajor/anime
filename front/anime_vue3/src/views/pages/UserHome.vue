@@ -43,24 +43,24 @@
             </div>
           </div>
           <div class="user-stats">
-            <div class="stat-item" @click="activeTab = 'following'">
-              <span class="stat-num">{{ followingCount }}</span>
+            <div class="stat-item" @click="switchTab('following')" :class="{ 'stat-disabled': isStatHidden('following') }">
+              <span class="stat-num">{{ isStatHidden('following') ? '***' : followingCount }}</span>
               <span class="stat-label">关注</span>
             </div>
-            <div class="stat-item" @click="activeTab = 'followers'">
-              <span class="stat-num">{{ followerCount }}</span>
+            <div class="stat-item" @click="switchTab('followers')" :class="{ 'stat-disabled': isStatHidden('followers') }">
+              <span class="stat-num">{{ isStatHidden('followers') ? '***' : followerCount }}</span>
               <span class="stat-label">粉丝</span>
             </div>
-            <div class="stat-item" @click="activeTab = 'posts'">
-              <span class="stat-num">{{ postsCount }}</span>
+            <div class="stat-item" @click="switchTab('posts')" :class="{ 'stat-disabled': isStatHidden('posts') }">
+              <span class="stat-num">{{ isStatHidden('posts') ? '***' : postsCount }}</span>
               <span class="stat-label">帖子</span>
             </div>
-            <div class="stat-item" @click="activeTab = 'comments'">
-              <span class="stat-num">{{ commentsCount }}</span>
+            <div class="stat-item" @click="switchTab('comments')" :class="{ 'stat-disabled': isStatHidden('comments') }">
+              <span class="stat-num">{{ isStatHidden('comments') ? '***' : commentsCount }}</span>
               <span class="stat-label">评论</span>
             </div>
-            <div class="stat-item" @click="activeTab = 'favorites'">
-              <span class="stat-num">{{ favoritesCount }}</span>
+            <div class="stat-item" @click="switchTab('favorites')" :class="{ 'stat-disabled': isStatHidden('favorites') }">
+              <span class="stat-num">{{ isStatHidden('favorites') ? '***' : favoritesCount }}</span>
               <span class="stat-label">收藏</span>
             </div>
           </div>
@@ -69,7 +69,7 @@
         <!-- 标签导航 -->
         <div class="tab-nav">
           <button
-            v-for="tab in tabs"
+            v-for="tab in visibleTabs"
             :key="tab.key"
             class="tab-btn"
             :class="{ active: activeTab === tab.key }"
@@ -79,8 +79,20 @@
           </button>
         </div>
 
+        <!-- 隐私保护提示 -->
+        <div v-if="!isSelf && !privacySettings.profilePublic" class="privacy-lock">
+          <div class="privacy-lock-icon">🔒</div>
+          <h3>该用户已设置个人主页为私密</h3>
+          <p>对方设置了隐私保护，你无法查看其详细资料</p>
+        </div>
+
         <!-- 内容区域 -->
-        <div class="tab-content">
+        <div class="tab-content" v-else>
+          <!-- 被隐藏的tab显示提示 -->
+          <div v-if="!isSelf && isTabHidden(activeTab)" class="privacy-hidden-tip">
+            <div class="privacy-lock-icon">🔒</div>
+            <p>该用户已隐藏此内容</p>
+          </div>
           <!-- 个人资料 -->
           <div v-if="activeTab === 'profile'" class="info-grid">
             <div class="info-card">
@@ -443,18 +455,31 @@ const pagedComments = computed(() => {
 });
 
 const tabs = [
-  { key: 'profile', label: '个人资料' },
-  { key: 'watchHistory', label: '观看记录' },
-  { key: 'favorites', label: '收藏' },
-  { key: 'ratings', label: '评分' },
-  { key: 'posts', label: '帖子' },
-  { key: 'comments', label: '评论' },
-  { key: 'following', label: '关注' },
-  { key: 'followers', label: '粉丝' }
+  { key: 'profile', label: '个人资料', privacyKey: '' },
+  { key: 'watchHistory', label: '观看记录', privacyKey: 'showWatchHistory' },
+  { key: 'favorites', label: '收藏', privacyKey: 'showFavorites' },
+  { key: 'ratings', label: '评分', privacyKey: 'showRatings' },
+  { key: 'posts', label: '帖子', privacyKey: 'showPosts' },
+  { key: 'comments', label: '评论', privacyKey: 'showComments' },
+  { key: 'following', label: '关注', privacyKey: 'showFollows' },
+  { key: 'followers', label: '粉丝', privacyKey: 'showFollows' }
 ];
+
+// 根据隐私设置过滤可见的标签页
+const visibleTabs = computed(() => {
+  if (isSelf.value) return tabs; // 自己看自己的主页，全部可见
+  return tabs.filter(tab => {
+    if (!tab.privacyKey) return true; // 个人资料始终可见
+    return (privacySettings.value as any)[tab.privacyKey] !== false;
+  });
+});
 
 // 切换 tab 时重置页码并加载数据
 const switchTab = (key: string) => {
+  // 如果当前是查看他人主页且该tab被隐藏，则不允许切换
+  if (!isSelf.value && isTabHidden(key)) {
+    return;
+  }
   activeTab.value = key;
   // 重置分页
   if (key === 'following' && followingList.value.length === 0) {
@@ -464,6 +489,18 @@ const switchTab = (key: string) => {
   } else if (key === 'comments' && comments.value.length === 0) {
     loadComments();
   }
+};
+
+// 检查当前tab是否被隐藏
+const isTabHidden = (tabKey: string): boolean => {
+  const tab = tabs.find(t => t.key === tabKey);
+  if (!tab || !tab.privacyKey) return false;
+  return (privacySettings.value as any)[tab.privacyKey] === false;
+};
+
+// 检查统计项是否被隐藏（用于显示***）
+const isStatHidden = (tabKey: string): boolean => {
+  return !isSelf.value && isTabHidden(tabKey);
 };
 
 // 图片处理
@@ -522,6 +559,16 @@ const loadUserProfile = async (username: string) => {
         region: data.region || '',
         signature: data.signature || '',
         avatar: data.avatar || ''
+      };
+      // 加载隐私设置
+      privacySettings.value = {
+        profilePublic: data.profilePublic !== false,
+        showWatchHistory: data.showWatchHistory !== false,
+        showFavorites: data.showFavorites !== false,
+        showRatings: data.showRatings !== false,
+        showPosts: data.showPosts !== false,
+        showComments: data.showComments !== false,
+        showFollows: data.showFollows !== false
       };
     }
   } catch (e) {
@@ -944,6 +991,11 @@ onMounted(async () => {
   transition: color 0.2s;
 }
 .stat-item:hover { color: #ff6b6b; }
+.stat-item.stat-disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.stat-item.stat-disabled:hover { color: inherit; }
 .stat-num {
   display: block;
   font-size: 20px;
@@ -1229,6 +1281,33 @@ onMounted(async () => {
   padding: 40px;
   color: #999;
   font-size: 15px;
+}
+
+/* 隐私保护提示 */
+.privacy-lock {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.privacy-lock-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.privacy-lock h3 {
+  font-size: 18px;
+  color: #333;
+  margin: 0 0 8px;
+}
+.privacy-lock p {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+.privacy-hidden-tip {
+  text-align: center;
+  padding: 40px 20px;
 }
 
 /* 头像预览弹窗 */

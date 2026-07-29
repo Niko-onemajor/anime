@@ -287,8 +287,15 @@ const handleSubmit = async () => {
   padding: 5px;
 }
 
+.toggle-password:hover {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.08);
+  border-radius: 4px;
+}
+
 .error {
   border-color: #f56c6c !important;
+  box-shadow: 0 0 0 2px rgba(245, 108, 108, 0.15);
 }
 
 .error-message {
@@ -314,6 +321,12 @@ const handleSubmit = async () => {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
+  animation: authFadeIn 0.5s ease;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .auth-box h2 {
@@ -390,23 +403,6 @@ const handleSubmit = async () => {
   text-decoration: underline;
 }
 
-.remember-me {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.remember-me input[type="checkbox"] {
-  margin-right: 8px;
-  cursor: pointer;
-}
-
-.remember-me label {
-  cursor: pointer;
-  font-size: 14px;
-  color: #666;
-}
-
 /* 密码强度指示器 */
 .password-strength {
   margin-top: 8px;
@@ -453,5 +449,28 @@ const handleSubmit = async () => {
 
 .strength-text.strong {
   color: #67c23a;
+}
+
+@media (max-width: 480px) {
+  .auth-box {
+    padding: 24px;
+    margin: 0 16px;
+    border-radius: 6px;
+  }
+
+  .auth-box h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .form-group input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 10px;
+    font-size: 14px;
+  }
 }
 </style>

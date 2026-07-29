@@ -976,6 +976,14 @@ onMounted(() => {
   min-width: 200px;
 }
 
+.search-input:focus,
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+}
+
 .search-select {
   padding: 8px 16px;
   border: 1px solid #ddd;
@@ -1066,6 +1074,13 @@ onMounted(() => {
   margin-top: 20px;
 }
 
+.anime-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+  font-size: 16px;
+}
+
 .anime-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -1096,6 +1111,7 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s;
+  background: #e0e0e0;
 }
 
 .anime-item:hover .anime-poster {
@@ -1129,6 +1145,7 @@ onMounted(() => {
   margin: 0 0 8px 0;
 }
 
+/* CSS NOTE: .anime-title 已设置 overflow/ellipsis 实现溢出省略。建议在模板中为对应元素添加 :title="anime.title" 属性，以便鼠标悬停时显示完整标题。 */
 .anime-title {
   margin: 0;
   font-size: 16px;
@@ -1233,6 +1250,15 @@ onMounted(() => {
 
 .comment-btn:hover {
   background: #7b1fa2;
+}
+
+/* 按钮 :active 样式 */
+.search-btn:active,
+.add-btn:active,
+.status-btn:active,
+.edit-btn:active,
+.delete-btn:active {
+  transform: scale(0.97);
 }
 
 /* 对话框样式 */
@@ -1542,6 +1568,7 @@ onMounted(() => {
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
+  background: #e0e0e0;
 }
 
 .author-name {

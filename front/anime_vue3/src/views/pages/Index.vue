@@ -656,6 +656,11 @@ onUnmounted(() => {
   font-weight: bold;
   color: #ff6b6b;
   text-decoration: none;
+  transition: color 0.3s;
+}
+
+.logo:hover {
+  color: #ff5252;
 }
 
 .nav-links {
@@ -665,6 +670,11 @@ onUnmounted(() => {
 
 .nav-link {
   margin-left: 20px;
+  cursor: pointer;
+}
+
+.nav-link:first-child {
+  margin-left: 0;
 }
 
 .nav-link a {
@@ -735,6 +745,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   background-color: #1a1a1a;
+  cursor: pointer;
 }
 
 .carousel-item.active {
@@ -786,12 +797,18 @@ onUnmounted(() => {
   font-size: 28px;
   font-weight: bold;
   margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .carousel-desc {
   font-size: 16px;
   margin-bottom: 20px;
   opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .carousel-btn {
@@ -873,17 +890,6 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.ranking-header {
-  margin-bottom: 20px;
-}
-
-.ranking-header h2 {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  margin: 0;
-}
-
 .ranking-tabs {
   display: flex;
   margin-bottom: 20px;
@@ -936,6 +942,8 @@ onUnmounted(() => {
   border-radius: 8px;
   overflow: hidden;
   transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 /* 新片上线 */
@@ -984,13 +992,6 @@ onUnmounted(() => {
   gap: 20px;
 }
 
-.anime-card {
-  background: #f9f9f9;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
 .anime-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -1021,7 +1022,7 @@ onUnmounted(() => {
   font-weight: bold;
   color: #333;
   margin: 0 0 10px 0;
-  height: 40px;
+  min-height: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -1075,22 +1076,6 @@ onUnmounted(() => {
   gap: 20px;
 }
 
-/* 热门动漫模块 */
-.popular-anime-container {
-  max-width: 1200px;
-  margin: 40px auto;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-}
-
-.popular-anime-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
-}
-
 /* 版权信息样式 */
 .footer {
   background: #333;
@@ -1122,6 +1107,10 @@ onUnmounted(() => {
     margin-left: 20px;
   }
 
+  .carousel {
+    height: 300px;
+  }
+
   .carousel-item {
     height: 300px;
   }
@@ -1139,24 +1128,10 @@ onUnmounted(() => {
   }
 
   .ranking-container,
+  .recommendation-container,
   .new-anime-container {
     padding: 15px;
     margin: 20px auto;
-  }
-
-  .ranking-item {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .ranking-number {
-    margin-right: 0;
-    margin-bottom: 10px;
-  }
-
-  .ranking-image {
-    margin-right: 0;
-    margin-bottom: 10px;
   }
 
   .new-anime-list {
@@ -1170,16 +1145,6 @@ onUnmounted(() => {
 
   .footer-content {
     padding: 0 15px;
-  }
-
-  .sponsor-links {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .sponsor-link {
-    width: 200px;
-    text-align: center;
   }
 }
 </style>

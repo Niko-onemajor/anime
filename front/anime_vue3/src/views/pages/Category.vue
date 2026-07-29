@@ -691,8 +691,9 @@ const saveFilterState = () => {
 }
 
 .sort-order-btn:hover {
+  background: #ff6b6b;
+  color: white;
   border-color: #ff6b6b;
-  color: #ff6b6b;
 }
 
 /* 加载状态样式 */
@@ -725,6 +726,16 @@ const saveFilterState = () => {
   color: #666;
 }
 
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #999;
+  font-size: 16px;
+}
+
 /* 动漫列表样式 */
 .anime-container {
   max-width: 1200px;
@@ -742,16 +753,18 @@ const saveFilterState = () => {
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
 }
 
 .anime-item:hover {
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .anime-image {
   height: 200px;
   overflow: hidden;
+  aspect-ratio: 16/9;
 }
 
 .anime-image img {
@@ -774,6 +787,9 @@ const saveFilterState = () => {
   font-weight: bold;
   margin-bottom: 10px;
   color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .anime-desc {
@@ -794,7 +810,7 @@ const saveFilterState = () => {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #999;
+  color: #666;
 }
 
 .anime-year {
@@ -807,6 +823,10 @@ const saveFilterState = () => {
   background: #f0f0f0;
   padding: 2px 8px;
   border-radius: 10px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 分页样式 */
@@ -921,6 +941,109 @@ const saveFilterState = () => {
   
   .footer-content {
     padding: 0 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-container {
+    padding: 0 10px;
+    flex-direction: column;
+    height: auto;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  
+  .nav-links li {
+    margin-left: 8px;
+  }
+  
+  .nav-links a {
+    font-size: 13px;
+  }
+  
+  .search-box {
+    padding: 0 10px;
+  }
+  
+  .search-input {
+    font-size: 14px;
+    padding: 8px;
+  }
+  
+  .search-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+  
+  .filter-container {
+    padding: 0 10px;
+  }
+  
+  .filter-section h3 {
+    font-size: 16px;
+  }
+  
+  .filter-tag {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .sort-order-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .anime-container {
+    padding: 0 10px;
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .anime-info {
+    padding: 12px;
+  }
+  
+  .anime-title {
+    font-size: 16px;
+  }
+  
+  .anime-desc {
+    font-size: 13px;
+    height: 50px;
+  }
+  
+  .pagination-container {
+    padding: 15px 10px;
+    gap: 5px;
+  }
+  
+  .page-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .page-num {
+    min-width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .page-total {
+    font-size: 12px;
+  }
+  
+  .footer-content {
+    padding: 0 10px;
+  }
+  
+  .footer-content p {
+    font-size: 12px;
   }
 }
 </style>

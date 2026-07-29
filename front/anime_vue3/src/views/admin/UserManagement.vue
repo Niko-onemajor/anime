@@ -796,6 +796,13 @@ onMounted(() => {
   font-size: 14px;
 }
 
+.search-input:focus,
+.form-input:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+}
+
 .search-btn {
   padding: 8px 16px;
   background: #ff6b6b;
@@ -838,6 +845,7 @@ onMounted(() => {
 
 .user-card {
   background: #fff;
+  border: 1px solid #eee;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   padding: 20px;
@@ -863,6 +871,7 @@ onMounted(() => {
   border-radius: 50%;
   object-fit: cover;
   margin-right: 15px;
+  background: #e0e0e0;
 }
 
 .user-card-info h3 {
@@ -944,6 +953,12 @@ onMounted(() => {
 
 .delete-btn:hover {
   background: #d32f2f;
+}
+
+.edit-btn:active,
+.delete-btn:active,
+.reset-password-btn:active {
+  transform: scale(0.97);
 }
 
 .dialog-overlay {
@@ -1281,6 +1296,7 @@ onMounted(() => {
   background: #e0e0e0;
   border-radius: 2px;
   overflow: hidden;
+  width: 100%;
 }
 
 .strength-fill {

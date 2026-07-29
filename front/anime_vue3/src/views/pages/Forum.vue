@@ -1698,6 +1698,9 @@ watch(
   color: white;
   padding: 10px 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .navbar-container {
@@ -1881,11 +1884,12 @@ watch(
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: box-shadow 0.3s;
+  transition: box-shadow 0.3s, transform 0.2s;
 }
 
 .post-item:hover {
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
 }
 
 .post-header {
@@ -1906,6 +1910,12 @@ watch(
   border-radius: 50%;
   margin-right: 10px;
   object-fit: cover;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.author-avatar:hover {
+  transform: scale(1.1);
 }
 
 .author-info {
@@ -1918,6 +1928,10 @@ watch(
   font-weight: bold;
   margin: 0;
   color: #333;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .post-time {
@@ -1959,6 +1973,9 @@ watch(
   font-weight: bold;
   margin: 0 0 10px 0;
   color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .post-text {
@@ -1966,6 +1983,8 @@ watch(
   color: #666;
   line-height: 1.5;
   margin: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .post-footer {
@@ -2003,7 +2022,7 @@ watch(
 
 .stat-btn.active {
   color: #ff6b6b;
-  font-weight: bold;
+  text-shadow: 0 0 1px rgba(255, 107, 107, 0.3);
 }
 
 /* 对话框样式 */
@@ -2046,7 +2065,7 @@ watch(
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #999;
+  color: #888;
   transition: color 0.3s;
 }
 
@@ -2077,6 +2096,12 @@ watch(
   font-size: 16px;
 }
 
+.form-input:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
+}
+
 .form-textarea {
   width: 100%;
   padding: 10px;
@@ -2085,6 +2110,12 @@ watch(
   font-size: 16px;
   resize: vertical;
   min-height: 150px;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
 }
 
 .dialog-footer {
@@ -2314,6 +2345,11 @@ watch(
   background: #f9f9f9;
   border-radius: 8px;
   margin-bottom: 10px;
+  transition: background 0.2s;
+}
+
+.comment-item:hover {
+  background: #f0f0f0;
 }
 
 .comment-author {
@@ -2328,6 +2364,12 @@ watch(
   border-radius: 50%;
   margin-right: 10px;
   object-fit: cover;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.comment-avatar:hover {
+  transform: scale(1.1);
 }
 
 .comment-info {
@@ -2352,6 +2394,8 @@ watch(
   color: #666;
   line-height: 1.5;
   margin-bottom: 10px;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .comment-actions {
@@ -2396,6 +2440,12 @@ watch(
   resize: vertical;
   min-height: 100px;
   font-size: 14px;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
 }
 
 .comment-submit-btn {
@@ -2488,6 +2538,11 @@ watch(
   background: #f5f5f5;
   border-radius: 6px;
   margin-bottom: 8px;
+  transition: background 0.2s;
+}
+
+.reply-item:hover {
+  background: #ebebeb;
 }
 
 .reply-item:last-child {
@@ -2702,6 +2757,49 @@ watch(
   .profile-label {
     margin-bottom: 5px;
   }
+
+  .search-post-sort-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .search-container {
+    max-width: 100%;
+    min-width: auto;
+  }
+
+  .sort-options {
+    min-width: auto;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .comment-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .comment-pagination {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .comment-pagination .page-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pagination .page-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
 }
 
 /* 版权信息样式 */
@@ -2710,6 +2808,7 @@ watch(
   color: #fff;
   padding: 20px 0;
   margin-top: 30px;
+  border-top: 3px solid #ff6b6b;
 }
 
 .footer-content {

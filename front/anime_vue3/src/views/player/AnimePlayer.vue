@@ -1412,13 +1412,14 @@ h1 {
   background: #000;
   border-radius: 8px;
   overflow: hidden;
-  aspect-ratio: 16/9;
+  aspect-ratio: 16 / 9;
+  max-height: 70vh;
 }
 
 .video-player {
   width: 100%;
-  height: 500px;
-  aspect-ratio: 16/9;
+  height: 100%;
+  display: block;
 }
 
 .episode-list {
@@ -2190,8 +2191,8 @@ h1 {
     padding: 10px;
   }
   
-  .video-player {
-    height: 300px;
+  .video-wrapper {
+    max-height: none;
   }
   
   .rating-container {

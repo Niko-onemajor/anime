@@ -33,7 +33,7 @@
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-posts' }" @click.prevent="switchTab('my-posts')">我的帖子</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-following' }" @click.prevent="switchTab('my-following')">我的关注</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'my-followers' }" @click.prevent="switchTab('my-followers')">我的粉丝</a></li>
-            <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'privacy' }" @click.prevent="switchTab('privacy')">隐私设置</a></li>
+            <li v-if="!isViewingOtherUser"><a href="#" :class="{ active: activeTab === 'settings' }" @click.prevent="switchTab('settings')">设置</a></li>
             <li v-if="!isViewingOtherUser"><a href="#" @click.prevent="handleLogout">退出登录</a></li>
           </ul>
         </div>
@@ -313,11 +313,15 @@
             </div>
           </div>
 
-          <!-- 隐私设置 -->
-          <div v-if="activeTab === 'privacy' && !isViewingOtherUser">
-            <h3>隐私设置</h3>
-            <p class="privacy-desc">控制你的个人主页上哪些内容对外可见。关闭后，其他用户将无法查看对应内容。</p>
-            <div class="privacy-list">
+          <!-- 设置 -->
+          <div v-if="activeTab === 'settings' && !isViewingOtherUser">
+            <h3>设置</h3>
+            
+            <!-- 隐私设置 -->
+            <div class="settings-section">
+              <h4 class="settings-section-title">隐私设置</h4>
+              <p class="privacy-desc">控制你的个人主页上哪些内容对外可见。关闭后，其他用户将无法查看对应内容。</p>
+              <div class="privacy-list">
               <div class="privacy-item">
                 <div class="privacy-info">
                   <span class="privacy-label">个人主页公开</span>
@@ -388,6 +392,7 @@
                   <span class="toggle-slider"></span>
                 </label>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -2208,6 +2213,16 @@ onMounted(async () => {
 .btn-following:hover { background: #ff6b6b; color: white; border-color: #ff6b6b; }
 
 /* 隐私设置样式 */
+.settings-section {
+  margin-bottom: 24px;
+}
+.settings-section-title {
+  font-size: 16px;
+  color: #333;
+  margin: 0 0 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
 .privacy-desc {
   color: #999;
   font-size: 14px;

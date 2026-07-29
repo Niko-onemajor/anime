@@ -9,6 +9,7 @@ import com.example.anime.model.ForumCommentInteraction;
 import com.example.anime.repository.UserRepository;
 import com.example.anime.repository.PostRepository;
 import com.example.anime.repository.ForumCommentInteractionRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class UserService {
     @Autowired
@@ -107,15 +109,15 @@ public class UserService {
 
     // 验证密码
     public boolean validatePassword(String rawPassword, String encodedPassword) {
-        System.out.println("=== 密码验证 ===");
-        System.out.println("明文密码: " + rawPassword);
-        System.out.println("加密密码: " + encodedPassword);
-        System.out.println("加密密码长度: " + encodedPassword.length());
-        System.out.println("加密密码是否以$2开头: " + encodedPassword.startsWith("$2"));
+        log.debug("=== 密码验证 ===");
+        log.debug("明文密码: " + rawPassword);
+        log.debug("加密密码: " + encodedPassword);
+        log.debug("加密密码长度: " + encodedPassword.length());
+        log.debug("加密密码是否以$2开头: " + encodedPassword.startsWith("$2"));
         
         // 首先尝试直接比较明文密码
         if (rawPassword.equals(encodedPassword)) {
-            System.out.println("明文比较结果: true");
+            log.debug("明文比较结果: true");
             return true;
         }
         
@@ -123,31 +125,31 @@ public class UserService {
         if (encodedPassword.startsWith("$2")) {
             // 使用BCrypt验证密码
             try {
-                System.out.println("尝试使用BCrypt验证密码");
+                log.debug("尝试使用BCrypt验证密码");
                 boolean result = passwordEncoder.matches(rawPassword, encodedPassword);
-                System.out.println("BCrypt验证结果: " + result);
+                log.debug("BCrypt验证结果: " + result);
                 return result;
             } catch (Exception e) {
-                System.out.println("BCrypt验证异常: " + e.getMessage());
+                log.debug("BCrypt验证异常: " + e.getMessage());
                 e.printStackTrace();
                 return false;
             }
         } else {
             // 对于其他格式的密码，直接比较
             boolean result = rawPassword.equals(encodedPassword);
-            System.out.println("其他格式密码比较结果: " + result);
+            log.debug("其他格式密码比较结果: " + result);
             return result;
         }
     }
 
     // 更新用户资料
     public User update(String oldUsername, String newUsername, String email, String birthday, String favorite, String gender, String region, String signature) {
-        System.out.println("=== 更新用户资料 ===");
-        System.out.println("旧用户名: " + oldUsername);
-        System.out.println("新用户名: " + newUsername);
+        log.debug("=== 更新用户资料 ===");
+        log.debug("旧用户名: " + oldUsername);
+        log.debug("新用户名: " + newUsername);
         // 查找用户（区分大小写）
         User user = userRepository.findByUsernameAndDeletedFalse(oldUsername);
-        System.out.println("查找结果: " + (user != null ? user.getUsername() : "null"));
+        log.debug("查找结果: " + (user != null ? user.getUsername() : "null"));
         if (user == null) {
             return null;
         }
@@ -155,7 +157,7 @@ public class UserService {
         // 检查新用户名是否已被其他用户使用（区分大小写）
         if (!oldUsername.equals(newUsername)) {
             User existingUser = userRepository.findByUsername(newUsername);
-            System.out.println("新用户名检查结果: " + (existingUser != null ? existingUser.getUsername() : "null"));
+            log.debug("新用户名检查结果: " + (existingUser != null ? existingUser.getUsername() : "null"));
             // 只有当存在其他用户使用该用户名时，才抛出异常
             if (existingUser != null && !existingUser.getId().equals(user.getId())) {
                 throw new IllegalArgumentException("用户名已存在，请换一个名字试试");
@@ -179,7 +181,7 @@ public class UserService {
         user.setSignature(signature);
 
         User savedUser = userRepository.save(user);
-        System.out.println("保存结果: " + savedUser.getUsername());
+        log.debug("保存结果: " + savedUser.getUsername());
         return savedUser;
     }
 
@@ -288,8 +290,8 @@ public class UserService {
     private void sendActivationEmail(String email, String username, String activationCode) {
         // 这里实现发送邮件的逻辑
         // 实际项目中需要配置邮件服务器
-        System.out.println("发送激活邮件到: " + email);
-        System.out.println("激活链接: http://localhost:8080/api/user/activate?code=" + activationCode + "&username=" + username);
+        log.debug("发送激活邮件到: " + email);
+        log.debug("激活链接: http://localhost:8080/api/user/activate?code=" + activationCode + "&username=" + username);
     }
     
     // 激活用户
@@ -323,29 +325,29 @@ public class UserService {
     @javax.transaction.Transactional
     public void deleteUser(Long id) {
         try {
-            System.out.println("开始删除用户，ID: " + id);
+            log.debug("开始删除用户，ID: " + id);
             
             // 1. 删除用户的观看记录
-            System.out.println("删除用户观看记录...");
+            log.debug("删除用户观看记录...");
             watchHistoryService.deleteByUserId(id);
             
             // 2. 删除用户的收藏
-            System.out.println("删除用户收藏...");
+            log.debug("删除用户收藏...");
             favoriteService.deleteByUserId(id);
             
             // 3. 删除用户的评分
-            System.out.println("删除用户评分...");
+            log.debug("删除用户评分...");
             animeRatingService.deleteByUserId(id);
             
             // 4. 删除用户的评论互动记录
-            System.out.println("删除用户评论互动记录...");
+            log.debug("删除用户评论互动记录...");
             List<CommentInteraction> commentInteractions = commentInteractionService.getByUserId(id);
             for (CommentInteraction interaction : commentInteractions) {
                 commentInteractionService.deleteById(interaction.getId());
             }
             
             // 5. 删除用户的论坛评论互动记录
-            System.out.println("删除用户论坛评论互动记录...");
+            log.debug("删除用户论坛评论互动记录...");
             List<ForumCommentInteraction> forumCommentInteractions = forumCommentInteractionRepository.findAll().stream()
                     .filter(interaction -> interaction.getUserId().equals(id))
                     .collect(java.util.stream.Collectors.toList());
@@ -354,11 +356,11 @@ public class UserService {
             }
             
             // 6. 删除用户的动漫评论
-            System.out.println("删除用户动漫评论...");
+            log.debug("删除用户动漫评论...");
             animeCommentService.deleteByAuthorId(id);
             
             // 7. 删除用户的帖子
-            System.out.println("删除用户帖子...");
+            log.debug("删除用户帖子...");
             List<Post> userPosts = postRepository.findByAuthorId(id);
             for (Post post : userPosts) {
                 // 先删除帖子的所有评论
@@ -371,11 +373,11 @@ public class UserService {
             }
             
             // 8. 最后逻辑删除用户
-            System.out.println("逻辑删除用户本身...");
+            log.debug("逻辑删除用户本身...");
             deleteById(id);
-            System.out.println("用户删除成功，ID: " + id);
+            log.debug("用户删除成功，ID: " + id);
         } catch (Exception e) {
-            System.out.println("删除用户失败: " + e.getMessage());
+            log.debug("删除用户失败: " + e.getMessage());
             e.printStackTrace();
             throw e; // 重新抛出异常，让调用方知道删除失败
         }
@@ -385,29 +387,29 @@ public class UserService {
     @javax.transaction.Transactional
     public void hardDelete(Long id) {
         try {
-            System.out.println("开始彻底删除用户，ID: " + id);
+            log.debug("开始彻底删除用户，ID: " + id);
             
             // 1. 删除用户的观看记录
-            System.out.println("删除用户观看记录...");
+            log.debug("删除用户观看记录...");
             watchHistoryService.deleteByUserId(id);
             
             // 2. 删除用户的收藏
-            System.out.println("删除用户收藏...");
+            log.debug("删除用户收藏...");
             favoriteService.deleteByUserId(id);
             
             // 3. 删除用户的评分
-            System.out.println("删除用户评分...");
+            log.debug("删除用户评分...");
             animeRatingService.deleteByUserId(id);
             
             // 4. 删除用户的评论互动记录
-            System.out.println("删除用户评论互动记录...");
+            log.debug("删除用户评论互动记录...");
             List<CommentInteraction> commentInteractions = commentInteractionService.getByUserId(id);
             for (CommentInteraction interaction : commentInteractions) {
                 commentInteractionService.deleteById(interaction.getId());
             }
             
             // 5. 删除用户的论坛评论互动记录
-            System.out.println("删除用户论坛评论互动记录...");
+            log.debug("删除用户论坛评论互动记录...");
             List<ForumCommentInteraction> forumCommentInteractions = forumCommentInteractionRepository.findAll().stream()
                     .filter(interaction -> interaction.getUserId().equals(id))
                     .collect(java.util.stream.Collectors.toList());
@@ -416,11 +418,11 @@ public class UserService {
             }
             
             // 6. 删除用户的动漫评论
-            System.out.println("删除用户动漫评论...");
+            log.debug("删除用户动漫评论...");
             animeCommentService.deleteByAuthorId(id);
             
             // 7. 删除用户的帖子
-            System.out.println("删除用户帖子...");
+            log.debug("删除用户帖子...");
             List<Post> userPosts = postRepository.findByAuthorId(id);
             for (Post post : userPosts) {
                 // 先删除帖子的所有评论
@@ -433,18 +435,18 @@ public class UserService {
             }
             
             // 8. 删除用户的论坛评论（直接由用户发布的评论，不是帖子的评论）
-            System.out.println("删除用户的论坛评论...");
+            log.debug("删除用户的论坛评论...");
             List<Comment> userComments = commentService.getCommentsByAuthorId(id);
             for (Comment comment : userComments) {
                 commentService.deleteById(comment.getId());
             }
             
             // 9. 最后删除用户本身
-            System.out.println("删除用户本身...");
+            log.debug("删除用户本身...");
             userRepository.deleteById(id);
-            System.out.println("用户彻底删除成功，ID: " + id);
+            log.debug("用户彻底删除成功，ID: " + id);
         } catch (Exception e) {
-            System.out.println("彻底删除用户失败: " + e.getMessage());
+            log.debug("彻底删除用户失败: " + e.getMessage());
             e.printStackTrace();
             throw e; // 重新抛出异常，让调用方知道删除失败
         }

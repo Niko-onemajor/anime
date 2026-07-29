@@ -2,12 +2,14 @@ package com.example.anime.service;
 
 import com.example.anime.model.Notification;
 import com.example.anime.repository.NotificationRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @Service
 public class NotificationService {
     @Autowired
@@ -15,8 +17,7 @@ public class NotificationService {
 
     public Notification createNotification(Long userId, String username, String type, String message,
                                             Long targetId, String targetType, Long subTargetId) {
-        System.out.println("NotificationService.createNotification 被调用");
-        System.out.println("  userId=" + userId + ", username=" + username + ", type=" + type);
+        log.debug("创建通知: userId={}, username={}, type={}", userId, username, type);
         Notification notification = new Notification();
         notification.setUserId(userId);
         notification.setUsername(username);
@@ -28,7 +29,7 @@ public class NotificationService {
         notification.setTargetType(targetType);
         notification.setSubTargetId(subTargetId);
         Notification saved = notificationRepository.save(notification);
-        System.out.println("  通知已保存, id=" + saved.getId());
+        log.debug("通知已保存, id={}", saved.getId());
         return saved;
     }
 

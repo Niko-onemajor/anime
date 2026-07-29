@@ -5,6 +5,7 @@ import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.CommentInteractionRepository;
 import com.example.anime.service.AnimeCommentService;
 import com.example.anime.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/anime/comment")
 public class AnimeCommentController {
@@ -66,11 +68,11 @@ public class AnimeCommentController {
                 return response;
             }
             Long animeId = Long.parseLong(animeIdObj.toString());
-            System.out.println("[AnimeCommentController] 获取评论列表, animeId=" + animeId);
+            log.debug("[AnimeCommentController] 获取评论列表, animeId={}", animeId);
 
             // 获取评论列表
             List<AnimeComment> comments = animeCommentService.getAnimeComments(animeId);
-            System.out.println("[AnimeCommentController] 查询到 " + comments.size() + " 条顶级评论");
+            log.debug("[AnimeCommentController] 查询到 {} 条顶级评论", comments.size());
             
             // 处理评论数据，添加作者信息
             List<Map<String, Object>> processedComments = new ArrayList<>();
@@ -82,7 +84,7 @@ public class AnimeCommentController {
                     comment.setLikeCount(likeCount);
                     comment.setDislikeCount(dislikeCount);
                 } catch (Exception e) {
-                    System.out.println("[AnimeCommentController] 计算评论互动数失败, commentId=" + comment.getId() + ": " + e.getMessage());
+                    log.warn("[AnimeCommentController] 计算评论互动数失败, commentId={}: {}", comment.getId(), e.getMessage());
                     comment.setLikeCount(0);
                     comment.setDislikeCount(0);
                 }
@@ -108,17 +110,17 @@ public class AnimeCommentController {
                         commentMap.put("author", authorMap);
                     }
                 } catch (Exception e) {
-                    System.out.println("[AnimeCommentController] 获取评论作者信息失败, authorId=" + comment.getAuthorId() + ": " + e.getMessage());
+                    log.warn("[AnimeCommentController] 获取评论作者信息失败, authorId={}: {}", comment.getAuthorId(), e.getMessage());
                 }
                 
                 processedComments.add(commentMap);
             }
 
-            System.out.println("[AnimeCommentController] 返回 " + processedComments.size() + " 条评论");
+            log.debug("[AnimeCommentController] 返回 {} 条评论", processedComments.size());
             response.put("code", 200);
             response.put("data", processedComments);
         } catch (Exception e) {
-            System.out.println("[AnimeCommentController] 获取评论列表异常: " + e.getMessage());
+            log.error("[AnimeCommentController] 获取评论列表异常", e);
             e.printStackTrace();
             response.put("code", 500);
             response.put("msg", "获取评论失败：" + e.getMessage());

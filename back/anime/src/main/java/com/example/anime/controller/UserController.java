@@ -4,6 +4,7 @@ import com.example.anime.model.User;
 import com.example.anime.service.UserService;
 import com.example.anime.utils.JwtUtils;
 import com.example.anime.utils.OSSUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -31,24 +33,22 @@ public class UserController {
         String password = (String) request.get("password");
         boolean rememberMe = request.get("rememberMe") != null && (boolean) request.get("rememberMe");
 
-        System.out.println("=== 登录请求 ===");
-        System.out.println("用户名: " + username);
-        System.out.println("密码: " + password);
-        System.out.println("记住我: " + rememberMe);
+        log.debug("=== 登录请求 ===");
+        log.debug("用户名: {}", username);
+        log.debug("记住我: {}", rememberMe);
 
         // 查找用户
         User user = userService.findByUsername(username);
-        System.out.println("查找用户结果: " + (user != null ? user.getUsername() : "null"));
+        log.debug("查找用户结果: {}", (user != null ? user.getUsername() : "null"));
         if (user == null) {
             response.put("code", 401);
             response.put("msg", "用户名或密码错误");
             return response;
         }
 
-        System.out.println("数据库中的密码: " + user.getPassword());
         // 验证密码
         boolean isValid = userService.validatePassword(password, user.getPassword());
-        System.out.println("密码验证结果: " + isValid);
+        log.debug("密码验证结果: {}", isValid);
         if (!isValid) {
             response.put("code", 401);
             response.put("msg", "用户名或密码错误");
@@ -59,7 +59,7 @@ public class UserController {
         if (!user.getPassword().startsWith("$2")) {
             user.setPassword(userService.encodePassword(password));
             userService.save(user);
-            System.out.println("密码已更新为加密版本");
+            log.info("密码已更新为加密版本");
         }
 
         // 生成令牌
@@ -237,10 +237,10 @@ public class UserController {
 
         // 保存头像
         try {
-            System.out.println("开始上传头像...");
-            System.out.println("用户名: " + username);
-            System.out.println("文件名: " + file.getOriginalFilename());
-            System.out.println("文件大小: " + file.getSize());
+            log.debug("开始上传头像...");
+            log.debug("用户名: {}", username);
+            log.debug("文件名: {}", file.getOriginalFilename());
+            log.debug("文件大小: {}", file.getSize());
             
             // 使用 OSSUtil 上传文件到本地存储
             String result = ossUtil.uploadAvatar(file);
@@ -260,7 +260,7 @@ public class UserController {
             
             // 更新用户头像
             userService.updateAvatar(username, avatarUrl);
-            System.out.println("头像上传成功: " + avatarUrl);
+            log.info("头像上传成功: {}", avatarUrl);
             
             // 返回响应
             Map<String, Object> data = new HashMap<>();
@@ -280,14 +280,12 @@ public class UserController {
     // 修改密码接口
     @PostMapping("/change-password")
     public Map<String, Object> changePassword(@RequestBody Map<String, String> request) {
-        System.out.println("=== 修改密码请求 ===");
+        log.debug("=== 修改密码请求 ===");
         Map<String, Object> response = new HashMap<>();
         String username = request.get("username");
         String oldPassword = request.get("oldPassword");
         String newPassword = request.get("newPassword");
-        System.out.println("用户名: " + username);
-        System.out.println("旧密码: " + oldPassword);
-        System.out.println("新密码: " + newPassword);
+        log.debug("用户名: {}", username);
 
         try {
             // 查找用户

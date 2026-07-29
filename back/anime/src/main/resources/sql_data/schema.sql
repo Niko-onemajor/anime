@@ -48,7 +48,10 @@ CREATE TABLE animes (
     deleted_at DATETIME,
     INDEX idx_title (title),
     INDEX idx_genre (genre),
-    INDEX idx_rating (rating)
+    INDEX idx_rating (rating),
+    INDEX idx_year (year),
+    INDEX idx_letter (letter),
+    INDEX idx_deleted (deleted)
 );
 
 -- 创建收藏表
@@ -126,7 +129,11 @@ CREATE TABLE anime_comments (
     dislike_count INT DEFAULT 0,
     FOREIGN KEY (anime_id) REFERENCES animes(id),
     FOREIGN KEY (author_id) REFERENCES users(id),
-    FOREIGN KEY (parent_id) REFERENCES anime_comments(id)
+    FOREIGN KEY (parent_id) REFERENCES anime_comments(id),
+    INDEX idx_anime_id (anime_id),
+    INDEX idx_author_id (author_id),
+    INDEX idx_parent_id (parent_id),
+    INDEX idx_create_time (create_time)
 );
 
 -- 创建评论互动表
@@ -138,7 +145,8 @@ CREATE TABLE comment_interactions (
     create_time DATETIME NOT NULL,
     UNIQUE KEY unique_user_comment (user_id, comment_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (comment_id) REFERENCES anime_comments(id)
+    FOREIGN KEY (comment_id) REFERENCES anime_comments(id),
+    INDEX idx_comment_type (comment_id, interaction_type)
 );
 
 -- 创建论坛评论互动表
@@ -150,7 +158,8 @@ CREATE TABLE forum_comment_interactions (
     create_time DATETIME NOT NULL,
     UNIQUE KEY unique_user_forum_comment (user_id, comment_id),
     FOREIGN KEY (comment_id) REFERENCES comments(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_forum_comment_type (comment_id, interaction_type)
 );
 
 -- 创建论坛帖子互动表
@@ -162,7 +171,8 @@ CREATE TABLE forum_post_interactions (
     create_time DATETIME NOT NULL,
     FOREIGN KEY (post_id) REFERENCES posts(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
-    UNIQUE KEY unique_user_post (user_id, post_id)
+    UNIQUE KEY unique_user_post (user_id, post_id),
+    INDEX idx_post_type (post_id, interaction_type)
 );
 
 -- 创建观看记录表
@@ -177,7 +187,8 @@ CREATE TABLE watch_history (
     FOREIGN KEY (episode_id) REFERENCES episodes(id),
     INDEX idx_user_anime (user_id, anime_id),
     INDEX idx_user_watch_time (user_id, watch_time),
-    INDEX idx_anime_id (anime_id)
+    INDEX idx_anime_id (anime_id),
+    INDEX idx_episode_id (episode_id)
 );
 
 -- 创建关注表

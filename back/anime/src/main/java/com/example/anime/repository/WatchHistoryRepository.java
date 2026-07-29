@@ -25,4 +25,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
     
     // 根据用户ID获取所有观看记录
     List<WatchHistory> findByUserId(Long userId);
+
+    // 统计指定动漫的观看次数
+    long countByAnimeId(Long animeId);
 }

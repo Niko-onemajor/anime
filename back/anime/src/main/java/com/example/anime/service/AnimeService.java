@@ -5,6 +5,7 @@ import com.example.anime.model.Episode;
 import com.example.anime.model.WatchHistory;
 import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.WatchHistoryRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class AnimeService {
     @Autowired
@@ -210,18 +212,7 @@ public class AnimeService {
 
     // 获取动漫的观看次数
     public int getAnimeWatchCount(Long animeId) {
-        // 获取所有观看历史
-        List<WatchHistory> allWatchHistories = watchHistoryRepository.findAll();
-        
-        // 计算指定动漫的观看次数
-        int count = 0;
-        for (WatchHistory history : allWatchHistories) {
-            if (history.getAnimeId().equals(animeId)) {
-                count++;
-            }
-        }
-        
-        return count;
+        return (int) watchHistoryRepository.countByAnimeId(animeId);
     }
 
     // 批量获取所有动漫的观看次数（一次查询，避免N+1问题）
@@ -326,30 +317,30 @@ public class AnimeService {
     @javax.transaction.Transactional
     public void hardDelete(Long id) {
         try {
-            System.out.println("开始彻底删除动漫，ID: " + id);
+            log.debug("开始彻底删除动漫，ID: " + id);
             
             // 1. 先删除所有相关的评论互动记录和评论
-            System.out.println("删除动漫评论...");
+            log.debug("删除动漫评论...");
             animeCommentService.deleteByAnimeId(id);
             
             // 2. 删除所有相关的观看记录
-            System.out.println("删除观看记录...");
+            log.debug("删除观看记录...");
             watchHistoryService.deleteByAnimeId(id);
             
             // 3. 删除所有相关的收藏
-            System.out.println("删除收藏...");
+            log.debug("删除收藏...");
             favoriteService.deleteByAnimeId(id);
             
             // 4. 删除所有相关的评分
-            System.out.println("删除评分...");
+            log.debug("删除评分...");
             animeRatingService.deleteByAnimeId(id);
             
             // 5. 删除所有相关的集数（包括已删除的）
-            System.out.println("删除集数...");
+            log.debug("删除集数...");
             List<Episode> episodes = episodeService.getEpisodesByAnimeId(id);
-            System.out.println("找到 " + episodes.size() + " 个未删除的集数");
+            log.debug("找到 " + episodes.size() + " 个未删除的集数");
             for (Episode episode : episodes) {
-                System.out.println("删除集数 ID: " + episode.getId());
+                log.debug("删除集数 ID: " + episode.getId());
                 episodeService.hardDelete(episode.getId());
             }
             
@@ -358,24 +349,24 @@ public class AnimeService {
             for (Episode episode : deletedEpisodes) {
                 if (episode.getAnimeId().equals(id)) {
                     deletedCount++;
-                    System.out.println("删除已删除的集数 ID: " + episode.getId());
+                    log.debug("删除已删除的集数 ID: " + episode.getId());
                     episodeService.hardDelete(episode.getId());
                 }
             }
-            System.out.println("找到并删除 " + deletedCount + " 个已删除的集数");
+            log.debug("找到并删除 " + deletedCount + " 个已删除的集数");
             
             // 6. 最后删除动漫本身
-            System.out.println("删除动漫本身...");
+            log.debug("删除动漫本身...");
             animeRepository.deleteById(id);
-            System.out.println("动漫彻底删除成功，ID: " + id);
+            log.debug("动漫彻底删除成功，ID: " + id);
         } catch (javax.persistence.PersistenceException e) {
             // 处理数据库相关异常
-            System.out.println("彻底删除动漫失败: 数据库操作错误 - " + e.getMessage());
+            log.debug("彻底删除动漫失败: 数据库操作错误 - " + e.getMessage());
             e.printStackTrace();
             throw e; // 重新抛出异常，让调用方知道删除失败
         } catch (Exception e) {
             // 处理其他异常
-            System.out.println("彻底删除动漫失败: " + e.getMessage());
+            log.debug("彻底删除动漫失败: " + e.getMessage());
             e.printStackTrace();
             throw e; // 重新抛出异常，让调用方知道删除失败
         }

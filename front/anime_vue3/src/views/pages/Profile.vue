@@ -351,7 +351,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import axios from 'axios';
 import api from '@/utils/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
@@ -490,7 +489,7 @@ const switchTab = (tab: string) => {
 const loadWatchHistory = async () => {
   loading.value = true;
   try {
-    const res = await axios.post('http://localhost:8080/api/watch-history/list', {
+    const res = await api.post('/api/watch-history/list', {
       username: username.value
     });
     if (res.data.code === 200) {
@@ -585,7 +584,7 @@ const goToAnimeDetail = (animeId: number) => {
 const loadFavorites = async () => {
   favoritesLoading.value = true;
   try {
-    const res = await axios.post('http://localhost:8080/api/favorites/list', {
+    const res = await api.post('/api/favorites/list', {
       username: username.value
     });
     if (res.data.code === 200) {
@@ -607,7 +606,7 @@ const removeFavorite = async (animeId: number) => {
     type: 'warning'
   }).then(async () => {
     try {
-      const res = await axios.post('http://localhost:8080/api/favorites/remove', {
+      const res = await api.post('/api/favorites/remove', {
         username: username.value,
         animeId: animeId
       });
@@ -631,7 +630,7 @@ const removeFavorite = async (animeId: number) => {
 const loadRatings = async () => {
   ratingsLoading.value = true;
   try {
-    const res = await axios.post('http://localhost:8080/api/anime/rating/user/list', {
+    const res = await api.post('/api/anime/rating/user/list', {
       username: username.value
     });
     if (res.data.code === 200) {
@@ -650,7 +649,7 @@ const loadMyPosts = async () => {
   if (!userId.value) {
     // 从后端获取用户ID
     try {
-      const res = await axios.post('http://localhost:8080/api/user/profile', {
+      const res = await api.post('/api/user/profile', {
         username: username.value
       });
       if (res.data.code === 200 && res.data.data.id) {
@@ -668,7 +667,7 @@ const loadMyPosts = async () => {
   myPostsLoading.value = true;
   myPostsPage.value = 1;
   try {
-    const res = await axios.get(`http://localhost:8080/api/post/author/${userId.value}`);
+    const res = await api.get(`/api/post/author/${userId.value}`);
     if (res.data && Array.isArray(res.data)) {
       myPosts.value = res.data.map((post: any) => ({
         ...post,
@@ -700,7 +699,7 @@ const submitEditMyPost = async () => {
     return;
   }
   try {
-    const res = await axios.post('http://localhost:8080/api/post/update', {
+    const res = await api.post('/api/post/update', {
       id: editPostForm.value.id,
       title: editPostForm.value.title,
       content: editPostForm.value.content
@@ -724,7 +723,7 @@ const deleteMyPost = async (postId: number) => {
       cancelButtonText: '取消',
       type: 'warning'
     });
-    await axios.delete(`http://localhost:8080/api/post/delete/${postId}`);
+    await api.delete(`/api/post/delete/${postId}`);
     ElMessage.success('帖子删除成功');
     loadMyPosts();
   } catch (error: any) {
@@ -815,7 +814,7 @@ watch(myPostsSearch, () => {
 const loadFollowingList = async () => {
   followingLoading.value = true;
   try {
-    const res = await axios.get(`http://localhost:8080/api/follow/following-list?userId=${userId.value}`);
+    const res = await api.get(`/api/follow/following-list?userId=${userId.value}`);
     if (res.data.code === 200) {
       followingList.value = res.data.data || [];
     } else {
@@ -833,7 +832,7 @@ const loadFollowingList = async () => {
 const loadFollowerList = async () => {
   followersLoading.value = true;
   try {
-    const res = await axios.get(`http://localhost:8080/api/follow/follower-list?userId=${userId.value}`);
+    const res = await api.get(`/api/follow/follower-list?userId=${userId.value}`);
     if (res.data.code === 200) {
       followerList.value = res.data.data || [];
     } else {
@@ -855,7 +854,7 @@ const unfollowUser = async (followedId: number) => {
       cancelButtonText: '取消',
       type: 'warning'
     });
-    const res = await axios.post('http://localhost:8080/api/follow/toggle', {
+    const res = await api.post('/api/follow/toggle', {
       followerId: userId.value,
       followedId: followedId
     });
@@ -893,7 +892,7 @@ const handleSave = async () => {
       const oldUsername = localStorage.getItem('username') || 'user1';
       
       // 保存基本信息
-      const res = await axios.post('http://localhost:8080/api/user/update', {
+      const res = await api.post('/api/user/update', {
         oldUsername: oldUsername,
         username: username.value,
         email: email.value,
@@ -968,7 +967,7 @@ const handlePasswordSave = async () => {
       
       try {
         console.log('发送密码修改请求到: http://localhost:8080/api/user/change-password');
-        const passwordRes = await axios.post('http://localhost:8080/api/user/change-password', {
+        const passwordRes = await api.post('/api/user/change-password', {
           username: oldUsername,
           oldPassword: currentPassword.value,
           newPassword: newPassword.value
@@ -1034,7 +1033,7 @@ const handleAvatarUpload = async (e: Event) => {
     formData.append('username', username.value);
     
     try {
-      const res = await axios.post('http://localhost:8080/api/user/avatar', formData, {
+      const res = await api.post('/api/user/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -1066,7 +1065,7 @@ onMounted(async () => {
   
   // 从后端获取用户资料
   try {
-    const res = await axios.post('http://localhost:8080/api/user/profile', {
+    const res = await api.post('/api/user/profile', {
       username: username.value
     });
     

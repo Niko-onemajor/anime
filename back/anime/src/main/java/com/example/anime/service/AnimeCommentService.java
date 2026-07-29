@@ -7,6 +7,7 @@ import com.example.anime.model.User;
 import com.example.anime.repository.AnimeCommentRepository;
 import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.CommentInteractionRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class AnimeCommentService {
     @Autowired
@@ -276,11 +278,11 @@ public class AnimeCommentService {
     @javax.transaction.Transactional
     public void deleteByAuthorId(Long authorId) {
         try {
-            System.out.println("开始删除用户的所有评论，用户ID: " + authorId);
+            log.debug("开始删除用户的所有评论，用户ID: " + authorId);
             
             // 1. 获取用户的所有评论
             List<AnimeComment> userComments = animeCommentRepository.findByAuthorIdOrderByCreateTimeDesc(authorId);
-            System.out.println("找到 " + userComments.size() + " 条评论");
+            log.debug("找到 " + userComments.size() + " 条评论");
             
             // 2. 收集所有评论ID
             java.util.List<Long> commentIds = new java.util.ArrayList<>();
@@ -289,7 +291,7 @@ public class AnimeCommentService {
             }
             
             // 3. 删除这些评论的互动记录
-            System.out.println("删除用户评论的互动记录...");
+            log.debug("删除用户评论的互动记录...");
             for (Long commentId : commentIds) {
                 List<CommentInteraction> interactions = commentInteractionRepository.findByCommentId(commentId);
                 for (CommentInteraction interaction : interactions) {
@@ -298,18 +300,18 @@ public class AnimeCommentService {
             }
             
             // 4. 将所有引用用户评论的评论的parent_id设置为null，避免外键约束冲突
-            System.out.println("将引用用户评论的评论的parent_id设置为null...");
+            log.debug("将引用用户评论的评论的parent_id设置为null...");
             for (Long commentId : commentIds) {
                 animeCommentRepository.updateParentIdToNullByParentId(commentId);
             }
             
             // 5. 然后删除用户的所有评论
-            System.out.println("删除用户的所有评论...");
+            log.debug("删除用户的所有评论...");
             animeCommentRepository.deleteCommentsByAuthorId(authorId);
             
-            System.out.println("用户评论删除完成，用户ID: " + authorId);
+            log.debug("用户评论删除完成，用户ID: " + authorId);
         } catch (Exception e) {
-            System.out.println("删除用户评论失败: " + e.getMessage());
+            log.debug("删除用户评论失败: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }
@@ -319,11 +321,11 @@ public class AnimeCommentService {
     @javax.transaction.Transactional
     public void deleteByAnimeId(Long animeId) {
         try {
-            System.out.println("开始删除动漫的所有评论，动漫ID: " + animeId);
+            log.debug("开始删除动漫的所有评论，动漫ID: " + animeId);
             
             // 1. 获取该动漫的所有评论
             List<AnimeComment> allComments = animeCommentRepository.findByAnimeIdOrderByCreateTimeDesc(animeId);
-            System.out.println("找到 " + allComments.size() + " 条评论");
+            log.debug("找到 " + allComments.size() + " 条评论");
             
             // 2. 收集所有评论ID
             java.util.List<Long> commentIds = new java.util.ArrayList<>();
@@ -332,7 +334,7 @@ public class AnimeCommentService {
             }
             
             // 3. 删除这些评论的互动记录
-            System.out.println("删除评论的互动记录...");
+            log.debug("删除评论的互动记录...");
             for (Long commentId : commentIds) {
                 List<CommentInteraction> interactions = commentInteractionRepository.findByCommentId(commentId);
                 for (CommentInteraction interaction : interactions) {
@@ -341,7 +343,7 @@ public class AnimeCommentService {
             }
             
             // 4. 删除这些评论关联的通知
-            System.out.println("删除评论关联的通知...");
+            log.debug("删除评论关联的通知...");
             for (Long commentId : commentIds) {
                 notificationService.deleteByCommentId(commentId);
             }
@@ -349,18 +351,18 @@ public class AnimeCommentService {
             notificationService.deleteByTarget("anime", animeId);
             
             // 5. 将所有引用这些评论的评论的parent_id设置为null，避免外键约束冲突
-            System.out.println("将引用这些评论的评论的parent_id设置为null...");
+            log.debug("将引用这些评论的评论的parent_id设置为null...");
             for (Long commentId : commentIds) {
                 animeCommentRepository.updateParentIdToNullByParentId(commentId);
             }
             
             // 6. 然后删除所有评论
-            System.out.println("删除所有评论...");
+            log.debug("删除所有评论...");
             animeCommentRepository.deleteByAnimeId(animeId);
             
-            System.out.println("动漫评论删除完成，动漫ID: " + animeId);
+            log.debug("动漫评论删除完成，动漫ID: " + animeId);
         } catch (Exception e) {
-            System.out.println("删除动漫评论失败: " + e.getMessage());
+            log.debug("删除动漫评论失败: " + e.getMessage());
             e.printStackTrace();
             // 如果还是失败，记录错误但不抛出异常，确保动漫删除流程继续
         }

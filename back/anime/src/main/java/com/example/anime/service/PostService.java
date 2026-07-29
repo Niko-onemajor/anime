@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class PostService {
@@ -26,15 +28,35 @@ public class PostService {
     @Autowired
     private NotificationService notificationService;
 
+    // 获取帖子列表并批量更新互动计数和评论数（一次查询替代N次）
+    private void batchUpdatePostCounts(List<Post> posts) {
+        if (posts.isEmpty()) return;
+        // 批量获取交互计数
+        List<Object[]> interactionCounts = forumPostInteractionRepository.countGroupByPostIdAndType();
+        Map<Long, Integer> likeMap = new HashMap<>();
+        Map<Long, Integer> dislikeMap = new HashMap<>();
+        for (Object[] row : interactionCounts) {
+            Long postId = (Long) row[0];
+            Integer type = (Integer) row[1];
+            Long count = (Long) row[2];
+            if (type == 1) {
+                likeMap.put(postId, count.intValue());
+            } else if (type == 2) {
+                dislikeMap.put(postId, count.intValue());
+            }
+        }
+        // 批量更新每个帖子的计数
+        for (Post post : posts) {
+            post.setLikeCount(likeMap.getOrDefault(post.getId(), 0));
+            post.setDislikeCount(dislikeMap.getOrDefault(post.getId(), 0));
+            post.setCommentCount(commentService.getCommentCountByPostId(post.getId()));
+        }
+    }
+
     // 获取所有帖子
     public List<Post> getAllPosts() {
         List<Post> posts = postRepository.findAllByOrderByCreateTimeDesc();
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
@@ -52,48 +74,28 @@ public class PostService {
     // 根据作者ID获取帖子
     public List<Post> getPostsByAuthorId(Long authorId) {
         List<Post> posts = postRepository.findByAuthorId(authorId);
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
     // 按时间排序获取帖子
     public List<Post> getPostsByTime() {
         List<Post> posts = postRepository.findAllByOrderByCreateTimeDesc();
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
     // 按点赞数排序获取帖子
     public List<Post> getPostsByLikes() {
         List<Post> posts = postRepository.findAllByOrderByLikeCountDesc();
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
     // 按点踩数排序获取帖子
     public List<Post> getPostsByDislikes() {
         List<Post> posts = postRepository.findAllByOrderByDislikeCountDesc();
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
@@ -253,35 +255,21 @@ public class PostService {
     // 获取所有帖子（用于管理员）
     public List<Post> findAll() {
         List<Post> posts = postRepository.findAll();
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
     // 根据标题搜索帖子（用于管理员）
     public List<Post> findByTitleContaining(String keyword) {
         List<Post> posts = postRepository.findByTitleContaining(keyword);
-        // 更新每个帖子的实际评论数和互动计数
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 
     // 根据标题或内容搜索帖子（用于管理员）
     public List<Post> searchByKeyword(String keyword) {
         List<Post> posts = postRepository.searchByKeyword(keyword);
-        posts.forEach(post -> {
-            int commentCount = commentService.getCommentCountByPostId(post.getId());
-            post.setCommentCount(commentCount);
-            updatePostInteractionCounts(post);
-        });
+        batchUpdatePostCounts(posts);
         return posts;
     }
 

@@ -118,7 +118,6 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import axios from 'axios';
 import api from '@/utils/api';
 
 const router = useRouter();
@@ -490,11 +489,11 @@ const loadHomePageData = async () => {
   try {
     // 并行请求所有数据，周榜只请求一次
     const [weeklyRes, monthlyRes, yearlyRes, animeListRes, recommendRes] = await Promise.allSettled([
-      axios.get('/api/anime/ranking/weekly'),
-      axios.get('/api/anime/ranking/monthly'),
-      axios.get('/api/anime/ranking/yearly'),
-      axios.get('/api/anime/list'),
-      axios.post('/api/recommendation/personalized', {
+      api.get('/api/anime/ranking/weekly'),
+      api.get('/api/anime/ranking/monthly'),
+      api.get('/api/anime/ranking/yearly'),
+      api.get('/api/anime/list'),
+      api.post('/api/recommendation/personalized', {
         username: localStorage.getItem('username') || 'user1'
       })
     ]);

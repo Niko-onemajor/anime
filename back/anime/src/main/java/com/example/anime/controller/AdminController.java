@@ -13,6 +13,7 @@ import com.example.anime.service.EpisodeService;
 import com.example.anime.repository.WatchHistoryRepository;
 import com.example.anime.handler.CommentWebSocketHandler;
 import com.example.anime.utils.OSSUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
@@ -212,23 +214,23 @@ public class AdminController {
         Map<String, Object> response = new HashMap<>();
         try {
             Long userId = request.get("id");
-            System.out.println("开始删除用户，ID: " + userId);
+            log.debug("开始删除用户，ID: {}", userId);
             
             // 1. 先检查用户是否存在
-            System.out.println("检查用户是否存在...");
+            log.debug("检查用户是否存在...");
             User user = userService.findById(userId);
             if (user == null) {
-                System.out.println("用户不存在，ID: " + userId);
+                log.debug("用户不存在，ID: {}", userId);
                 response.put("code", 400);
                 response.put("msg", "用户不存在");
                 return response;
             }
-            System.out.println("用户存在，ID: " + userId + ", 用户名: " + user.getUsername());
+            log.debug("用户存在，ID: {}, 用户名: {}", userId, user.getUsername());
             
             // 2. 调用UserService的deleteUser方法删除用户及其相关数据
-            System.out.println("调用UserService.deleteUser删除用户...");
+            log.debug("调用UserService.deleteUser删除用户...");
             userService.deleteUser(userId);
-            System.out.println("用户删除成功，ID: " + userId);
+            log.info("用户删除成功，ID: {}", userId);
             
             response.put("code", 200);
             response.put("msg", "用户删除成功");
@@ -985,21 +987,21 @@ public class AdminController {
             @RequestParam("fileName") String fileName) {
         Map<String, Object> response = new HashMap<>();
         try {
-            System.out.println("开始上传视频...");
-            System.out.println("文件名: " + file.getOriginalFilename());
-            System.out.println("文件大小: " + file.getSize() + " bytes");
-            System.out.println("目标路径: " + fileName);
+            log.debug("开始上传视频...");
+            log.debug("文件名: {}", file.getOriginalFilename());
+            log.debug("文件大小: {} bytes", file.getSize());
+            log.debug("目标路径: {}", fileName);
             
             // 使用OSSUtil上传视频
             String videoUrl = ossUtil.uploadVideo(file, fileName);
-            System.out.println("上传成功，URL: " + videoUrl);
+            log.info("上传成功，URL: {}", videoUrl);
             
             response.put("code", 200);
             response.put("data", videoUrl);
             response.put("msg", "视频上传成功");
             return response;
         } catch (Exception e) {
-            System.out.println("上传失败:");
+            log.error("上传失败", e);
             e.printStackTrace();
             response.put("code", 500);
             response.put("msg", "视频上传失败: " + e.getMessage());

@@ -13,6 +13,7 @@ import com.example.anime.repository.FavoriteRepository;
 import com.example.anime.repository.UserRepository;
 import com.example.anime.repository.WatchHistoryRepository;
 import com.example.anime.service.AnimeRatingService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 
+@Slf4j
 @Component
 public class DataGenerator {
     @Autowired
@@ -48,7 +50,7 @@ public class DataGenerator {
         List<Anime> animes = animeRepository.findAll();
 
         if (users.isEmpty() || animes.isEmpty()) {
-            System.out.println("用户或动漫数据为空，无法生成数据");
+            log.warn("用户或动漫数据为空，无法生成数据");
             return;
         }
 
@@ -67,13 +69,13 @@ public class DataGenerator {
             animeRatingService.updateAnimeAverageRating(anime.getId());
         }
 
-        System.out.println("数据生成完成");
-        System.out.println("动漫平均评分更新完成");
+        log.info("数据生成完成");
+        log.info("动漫平均评分更新完成");
     }
 
     private void generateWatchHistory(User user, List<Anime> animes) {
         if (animes.isEmpty()) {
-            System.out.println("动漫数据为空，无法生成观看记录");
+            log.warn("动漫数据为空，无法生成观看记录");
             return;
         }
         
@@ -126,7 +128,7 @@ public class DataGenerator {
 
     private void generateFavorites(User user, List<Anime> animes) {
         if (animes.isEmpty()) {
-            System.out.println("动漫数据为空，无法生成收藏");
+            log.warn("动漫数据为空，无法生成收藏");
             return;
         }
         
@@ -164,7 +166,7 @@ public class DataGenerator {
 
     private void generateRatings(User user, List<Anime> animes) {
         if (animes.isEmpty()) {
-            System.out.println("动漫数据为空，无法生成评分");
+            log.warn("动漫数据为空，无法生成评分");
             return;
         }
         

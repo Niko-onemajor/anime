@@ -3,12 +3,14 @@ package com.example.anime.config;
 import com.example.anime.model.Anime;
 import com.example.anime.repository.AnimeRatingRepository;
 import com.example.anime.repository.AnimeRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Slf4j
 @Component
 public class RatingInitializer implements CommandLineRunner {
     
@@ -34,6 +36,6 @@ public class RatingInitializer implements CommandLineRunner {
             }
         }
         
-        System.out.println("动漫评分初始化完成");
+        log.info("动漫评分初始化完成");
     }
 }

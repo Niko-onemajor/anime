@@ -1,5 +1,6 @@
 package com.example.anime.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +17,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+@Slf4j
 @Component
 public class OSSUtil {
 
@@ -102,32 +104,32 @@ public class OSSUtil {
         File dest = destPath.toFile();
         String localFilePath = dest.getAbsolutePath();
         
-        System.out.println("存储路径: " + storagePath);
-        System.out.println("文件名: " + fileName);
-        System.out.println("本地文件路径: " + localFilePath);
-        System.out.println("用户主目录: " + System.getProperty("user.home"));
-        System.out.println("当前工作目录: " + System.getProperty("user.dir"));
-        System.out.println("Java版本: " + System.getProperty("java.version"));
-        System.out.println("操作系统: " + System.getProperty("os.name"));
-        System.out.println("操作系统版本: " + System.getProperty("os.version"));
+        log.debug("存储路径: {}", storagePath);
+        log.debug("文件名: {}", fileName);
+        log.debug("本地文件路径: {}", localFilePath);
+        log.debug("用户主目录: {}", System.getProperty("user.home"));
+        log.debug("当前工作目录: {}", System.getProperty("user.dir"));
+        log.debug("Java版本: {}", System.getProperty("java.version"));
+        log.debug("操作系统: {}", System.getProperty("os.name"));
+        log.debug("操作系统版本: {}", System.getProperty("os.version"));
         
         // 检查目标文件的父目录
         File parentDir = dest.getParentFile();
-        System.out.println("父目录路径: " + parentDir);
-        System.out.println("父目录是否存在: " + parentDir.exists());
+        log.debug("父目录路径: {}", parentDir);
+        log.debug("父目录是否存在: {}", parentDir.exists());
         
         // 保存文件
-        System.out.println("开始保存文件: " + localFilePath);
+        log.debug("开始保存文件: {}", localFilePath);
         try {
             // 方法15: 使用应用程序工作目录作为临时存储，然后创建符号链接
-            System.out.println("方法15: 使用应用程序工作目录作为临时存储，然后创建符号链接");
+            log.debug("方法15: 使用应用程序工作目录作为临时存储，然后创建符号链接");
             
             // 创建应用程序工作目录下的存储目录
             String appStoragePath = System.getProperty("user.dir") + File.separator + "storage" + File.separator + urlPath;
             File appStorageDir = new File(appStoragePath);
             if (!appStorageDir.exists()) {
                 appStorageDir.mkdirs();
-                System.out.println("应用程序存储目录创建成功: " + appStorageDir.getAbsolutePath());
+                log.debug("应用程序存储目录创建成功: {}", appStorageDir.getAbsolutePath());
             }
             
             // 构建应用程序存储路径
@@ -139,11 +141,11 @@ public class OSSUtil {
                 fos.write(file.getBytes());
                 fos.flush();
             }
-            System.out.println("文件保存到应用程序工作目录成功: " + appFilePath);
+            log.debug("文件保存到应用程序工作目录成功: {}", appFilePath);
             
             // 检查应用程序存储文件
-            System.out.println("应用程序存储文件是否存在: " + appFile.exists());
-            System.out.println("应用程序存储文件大小: " + appFile.length() + " bytes");
+            log.debug("应用程序存储文件是否存在: {}", appFile.exists());
+            log.debug("应用程序存储文件大小: {} bytes", appFile.length());
             
             // 尝试创建符号链接
             try {
@@ -152,17 +154,17 @@ public class OSSUtil {
                 ProcessBuilder pb = new ProcessBuilder();
                 pb.command("cmd", "/c", "mklink", "/H", dest.getAbsolutePath(), appFile.getAbsolutePath());
                 pb.redirectErrorStream(true);
-                System.out.println("执行命令: " + pb.command());
+                log.debug("执行命令: {}", pb.command());
                 
                 Process process = pb.start();
                 int exitCode = process.waitFor();
-                System.out.println("命令执行结果: " + exitCode);
+                log.debug("命令执行结果: {}", exitCode);
                 
                 // 读取命令输出
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        System.out.println("命令输出: " + line);
+                        log.debug("命令输出: {}", line);
                     }
                 }
                 
@@ -170,33 +172,33 @@ public class OSSUtil {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        System.out.println("错误输出: " + line);
+                        log.debug("错误输出: {}", line);
                     }
                 }
                 
                 if (exitCode != 0) {
                     // 如果符号链接创建失败，尝试直接复制文件
-                    System.out.println("符号链接创建失败，尝试直接复制文件");
+                    log.debug("符号链接创建失败，尝试直接复制文件");
                     // 确保目标文件的父目录存在
                     if (!parentDir.exists()) {
-                        System.out.println("目标目录不存在，开始创建");
+                        log.debug("目标目录不存在，开始创建");
                         try {
                             boolean created = parentDir.mkdirs();
-                            System.out.println("目录创建结果: " + created);
+                            log.debug("目录创建结果: {}", created);
                             if (!created) {
-                                System.out.println("目录创建失败，使用应用程序工作目录作为替代");
+                                log.debug("目录创建失败，使用应用程序工作目录作为替代");
                                 // 如果目录创建失败，直接返回应用程序工作目录中的文件
-                    System.out.println("文件保存成功（使用应用程序工作目录）");
+                    log.debug("文件保存成功（使用应用程序工作目录）");
                     // 确保路径中没有双斜杠
                     String storageUrl = "/storage" + urlPath + fileName;
                     return storageUrl.replace("//", "/");
                             }
-                            System.out.println("目录创建成功");
+                            log.debug("目录创建成功");
                         } catch (Exception e) {
-                            System.out.println("目录创建失败: " + e.getMessage());
-                            System.out.println("使用应用程序工作目录作为替代");
+                            log.debug("目录创建失败: {}", e.getMessage());
+                            log.debug("使用应用程序工作目录作为替代");
                             // 如果目录创建失败，直接返回应用程序工作目录中的文件
-                            System.out.println("文件保存成功（使用应用程序工作目录）");
+                            log.debug("文件保存成功（使用应用程序工作目录）");
                             // 确保路径中没有双斜杠
                             String storageUrl = "/storage" + urlPath + fileName;
                             return storageUrl.replace("//", "/");
@@ -209,33 +211,33 @@ public class OSSUtil {
                         while ((length = fis.read(buffer)) > 0) {
                             fos.write(buffer, 0, length);
                         }
-                        System.out.println("文件直接复制成功");
+                        log.debug("文件直接复制成功");
                     }
                 } else {
-                    System.out.println("符号链接创建成功");
+                    log.debug("符号链接创建成功");
                 }
             } catch (Exception e) {
-                System.out.println("符号链接创建失败: " + e.getMessage());
+                log.debug("符号链接创建失败: {}", e.getMessage());
                 // 尝试直接复制文件
-                System.out.println("尝试直接复制文件");
+                log.debug("尝试直接复制文件");
                 // 确保目标文件的父目录存在
                 if (!parentDir.exists()) {
-                    System.out.println("目标目录不存在，开始创建");
+                    log.debug("目标目录不存在，开始创建");
                     try {
                         boolean created = parentDir.mkdirs();
-                        System.out.println("目录创建结果: " + created);
+                        log.debug("目录创建结果: {}", created);
                         if (!created) {
-                            System.out.println("目录创建失败，使用应用程序工作目录作为替代");
+                            log.debug("目录创建失败，使用应用程序工作目录作为替代");
                             // 如果目录创建失败，直接返回应用程序工作目录中的文件
-                            System.out.println("文件保存成功（使用应用程序工作目录）");
+                            log.debug("文件保存成功（使用应用程序工作目录）");
                             return "/storage/" + urlPath + fileName;
                         }
-                        System.out.println("目录创建成功");
+                        log.debug("目录创建成功");
                     } catch (Exception ex) {
-                        System.out.println("目录创建失败: " + ex.getMessage());
-                        System.out.println("使用应用程序工作目录作为替代");
+                        log.debug("目录创建失败: {}", ex.getMessage());
+                        log.debug("使用应用程序工作目录作为替代");
                         // 如果目录创建失败，直接返回应用程序工作目录中的文件
-                        System.out.println("文件保存成功（使用应用程序工作目录）");
+                        log.debug("文件保存成功（使用应用程序工作目录）");
                             // 确保路径中没有双斜杠
                             String storageUrl = "/storage" + urlPath + fileName;
                             return storageUrl.replace("//", "/");
@@ -248,21 +250,21 @@ public class OSSUtil {
                     while ((length = fis.read(buffer)) > 0) {
                         fos.write(buffer, 0, length);
                     }
-                    System.out.println("文件直接复制成功");
+                    log.debug("文件直接复制成功");
                 } catch (Exception ex) {
-                    System.out.println("文件复制失败: " + ex.getMessage());
-                    System.out.println("使用应用程序工作目录作为替代");
+                    log.debug("文件复制失败: {}", ex.getMessage());
+                    log.debug("使用应用程序工作目录作为替代");
                     // 如果文件复制失败，直接返回应用程序工作目录中的文件
-                    System.out.println("文件保存成功（使用应用程序工作目录）");
+                    log.debug("文件保存成功（使用应用程序工作目录）");
                     // 确保路径中没有双斜杠
                     String storageUrl = "/storage" + urlPath + fileName;
                     return storageUrl.replace("//", "/");
                 }
             }
             
-            System.out.println("文件保存成功");
+            log.debug("文件保存成功");
         } catch (Exception e) {
-            System.out.println("文件保存失败: " + e.getMessage());
+            log.error("文件保存失败: {}", e.getMessage());
             e.printStackTrace();
             throw e;
         }

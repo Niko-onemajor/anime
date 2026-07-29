@@ -2,11 +2,13 @@ package com.example.anime.service;
 
 import com.example.anime.model.*;
 import com.example.anime.repository.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+@Slf4j
 @Service
 public class NotificationSyncService {
 
@@ -106,7 +108,7 @@ public class NotificationSyncService {
         }
         
         if (fixed > 0) {
-            System.out.println("[NotificationSync] 修复了 " + fixed + " 条缺失 targetType 的通知");
+            log.info("修复了 {} 条缺失 targetType 的通知", fixed);
         }
         return fixed;
     }

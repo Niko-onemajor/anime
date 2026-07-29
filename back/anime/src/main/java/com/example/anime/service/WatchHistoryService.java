@@ -48,24 +48,24 @@ public class WatchHistoryService {
     // 根据集数ID删除所有相关的观看记录
     public void deleteByEpisodeId(Long episodeId) {
         List<WatchHistory> histories = watchHistoryRepository.findByEpisodeId(episodeId);
-        for (WatchHistory history : histories) {
-            watchHistoryRepository.delete(history);
+        if (!histories.isEmpty()) {
+            watchHistoryRepository.deleteAllInBatch(histories);
         }
     }
     
     // 根据动漫ID删除所有相关的观看记录
     public void deleteByAnimeId(Long animeId) {
         List<WatchHistory> histories = watchHistoryRepository.findByAnimeId(animeId);
-        for (WatchHistory history : histories) {
-            watchHistoryRepository.delete(history);
+        if (!histories.isEmpty()) {
+            watchHistoryRepository.deleteAllInBatch(histories);
         }
     }
     
     // 根据用户ID删除所有相关的观看记录
     public void deleteByUserId(Long userId) {
         List<WatchHistory> histories = watchHistoryRepository.findByUserId(userId);
-        for (WatchHistory history : histories) {
-            watchHistoryRepository.delete(history);
+        if (!histories.isEmpty()) {
+            watchHistoryRepository.deleteAllInBatch(histories);
         }
     }
 }

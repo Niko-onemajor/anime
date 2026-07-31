@@ -76,7 +76,7 @@ public class PostService {
         Post post = postRepository.findById(id).orElse(null);
         if (post != null) {
             // 非管理员不能查看测试帖子
-            if (!SecurityUtils.isCurrentUserAdmin() && post.getIsTest() != null && post.getIsTest()) {
+            if (!SecurityUtils.isCurrentUserAdmin() && Boolean.TRUE.equals(post.getIsTest())) {
                 return null;
             }
             int commentCount = commentService.getCommentCountByPostId(post.getId());
@@ -124,7 +124,7 @@ public class PostService {
             post.setDislikeCount(0);
             post.setCommentCount(0);
             // 测试用户创建的帖子自动标记为测试数据
-            if (user.getIsTest() != null && user.getIsTest()) {
+            if (Boolean.TRUE.equals(user.getIsTest())) {
                 post.setIsTest(true);
             }
             return postRepository.save(post);
@@ -312,7 +312,7 @@ public class PostService {
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         if (fromUser == null) return;
         // 测试用户不发送通知
-        if (fromUser.getIsTest() != null && fromUser.getIsTest()) return;
+        if (Boolean.TRUE.equals(fromUser.getIsTest())) return;
         notificationService.notifyPostLike(
             author.getId(),
             author.getUsername(),
@@ -331,7 +331,7 @@ public class PostService {
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         if (fromUser == null) return;
         // 测试用户不发送通知
-        if (fromUser.getIsTest() != null && fromUser.getIsTest()) return;
+        if (Boolean.TRUE.equals(fromUser.getIsTest())) return;
         notificationService.notifyPostDislike(
             author.getId(),
             author.getUsername(),

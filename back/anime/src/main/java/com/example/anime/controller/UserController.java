@@ -449,7 +449,7 @@ public class UserController {
             List<Map<String, Object>> result = new ArrayList<>();
             for (User user : users) {
                 // 非管理员不显示测试用户
-                if (!SecurityUtils.isCurrentUserAdmin() && user.getIsTest() != null && user.getIsTest()) {
+                if (!SecurityUtils.isCurrentUserAdmin() && Boolean.TRUE.equals(user.getIsTest())) {
                     continue;
                 }
                 Map<String, Object> item = new HashMap<>();

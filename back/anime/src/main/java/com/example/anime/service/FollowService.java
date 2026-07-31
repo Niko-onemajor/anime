@@ -56,7 +56,7 @@ public class FollowService {
             User user = userRepository.findByIdAndDeletedFalse(follow.getFollowedId());
             if (user != null) {
                 // 非管理员不显示测试用户
-                if (!SecurityUtils.isCurrentUserAdmin() && user.getIsTest() != null && user.getIsTest()) {
+                if (!SecurityUtils.isCurrentUserAdmin() && Boolean.TRUE.equals(user.getIsTest())) {
                     continue;
                 }
                 users.add(user);
@@ -73,7 +73,7 @@ public class FollowService {
             User user = userRepository.findByIdAndDeletedFalse(follow.getFollowerId());
             if (user != null) {
                 // 非管理员不显示测试用户
-                if (!SecurityUtils.isCurrentUserAdmin() && user.getIsTest() != null && user.getIsTest()) {
+                if (!SecurityUtils.isCurrentUserAdmin() && Boolean.TRUE.equals(user.getIsTest())) {
                     continue;
                 }
                 users.add(user);

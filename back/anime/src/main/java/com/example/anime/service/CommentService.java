@@ -50,14 +50,14 @@ public class CommentService {
         comment.setDislikeCount(0);
         // 测试用户创建的评论自动标记为测试数据
         User author = userService.findById(authorId);
-        if (author != null && author.getIsTest() != null && author.getIsTest()) {
+        if (author != null && Boolean.TRUE.equals(author.getIsTest())) {
             comment.setIsTest(true);
         }
         Comment savedComment = commentRepository.save(comment);
 
         // 测试用户不发送通知给真实用户
         User fromUser = userService.findById(authorId);
-        boolean isTestUser = fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest();
+        boolean isTestUser = fromUser != null && Boolean.TRUE.equals(fromUser.getIsTest());
 
         // 回复评论时通知被回复用户
         if (parentId != null) {
@@ -231,7 +231,7 @@ public class CommentService {
                 User targetUser = userService.findById(comment.getAuthorId());
                 User fromUser = userService.findById(userId);
                 // 测试用户不发送通知
-                if (fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest()) {
+                if (fromUser != null && Boolean.TRUE.equals(fromUser.getIsTest())) {
                     return savedComment;
                 }
                 Post post = postRepository.findById(comment.getPostId()).orElse(null);
@@ -297,7 +297,7 @@ public class CommentService {
                 User targetUser = userService.findById(comment.getAuthorId());
                 User fromUser = userService.findById(userId);
                 // 测试用户不发送通知
-                if (fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest()) {
+                if (fromUser != null && Boolean.TRUE.equals(fromUser.getIsTest())) {
                     return savedComment;
                 }
                 Post post = postRepository.findById(comment.getPostId()).orElse(null);

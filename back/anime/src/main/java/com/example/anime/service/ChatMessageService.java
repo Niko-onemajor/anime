@@ -40,7 +40,7 @@ public class ChatMessageService {
                 Map<String, Object> conv = new HashMap<>();
                 User otherUser = userRepository.findByIdAndDeletedFalse(otherUserId);
                 // 非管理员不显示测试用户
-                if (otherUser != null && otherUser.getIsTest() != null && otherUser.getIsTest()
+                if (otherUser != null && Boolean.TRUE.equals(otherUser.getIsTest())
                         && !SecurityUtils.isCurrentUserAdmin()) {
                     continue;
                 }

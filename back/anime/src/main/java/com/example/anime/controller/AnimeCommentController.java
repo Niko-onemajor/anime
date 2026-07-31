@@ -46,6 +46,12 @@ public class AnimeCommentController {
             // 保存评论
             AnimeComment savedComment = animeCommentService.saveComment(animeId, authorId, content, parentId);
 
+            // 支持测试标记
+            if (request.get("isTest") != null) {
+                savedComment.setIsTest(Boolean.valueOf(request.get("isTest").toString()));
+                savedComment = animeCommentService.save(savedComment);
+            }
+
             response.put("code", 200);
             response.put("msg", "评论成功");
             response.put("data", savedComment);

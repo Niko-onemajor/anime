@@ -13,7 +13,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 TEST_USERNAME = "testuser"
 TEST_PASSWORD = "Test@1234"
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "Test@1234"
+ADMIN_PASSWORD = "Admin@123"
 
 # 数据库配置（用于创建 admin 账号）
 DB_CONFIG = {
@@ -124,6 +124,21 @@ def pytest_collection_modifyitems(config, items):
         "TestAdminForumManagement": "管理员-论坛管理",
         "TestAdminDeletedRecords": "管理员-删除记录",
         "TestAdminUnauthorizedAccess": "管理员-权限控制",
+        "TestResponseTime": "性能-响应时间",
+        "TestConcurrentRequests": "性能-并发请求",
+        "TestLoadAndThroughput": "性能-负载吞吐量",
+        "TestApiStability": "性能-API稳定性",
+        "TestPageLoadSpeed": "性能-页面加载速度",
+        "TestAuthorizationBypass": "安全-权限越界",
+        "TestXSSProtection": "安全-XSS防护",
+        "TestSQLInjectionProtection": "安全-SQL注入",
+        "TestPathTraversal": "安全-路径遍历",
+        "TestTokenSecurity": "安全-Token安全",
+        "TestInformationLeakage": "安全-信息泄露",
+        "TestCSRFProtection": "安全-CSRF防护",
+        "TestInputValidation": "安全-输入验证",
+        "TestRateLimiting": "安全-速率限制",
+        "TestCORSSecurity": "安全-跨域安全",
         "TestFileUpload": "文件上传",
         "TestMisc": "杂项接口",
         "TestPageLoads": "页面加载",

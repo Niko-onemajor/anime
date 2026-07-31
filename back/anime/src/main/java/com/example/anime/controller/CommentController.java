@@ -119,6 +119,12 @@ public class CommentController {
 
         Comment comment = commentService.addComment(postId, user.getId(), content, parentId);
 
+        // 支持测试标记
+        if (request.get("isTest") != null) {
+            comment.setIsTest(Boolean.valueOf(request.get("isTest").toString()));
+            comment = commentService.save(comment);
+        }
+
         // 构建返回数据
         Map<String, Object> commentMap = new HashMap<>();
         commentMap.put("id", comment.getId());

@@ -93,6 +93,7 @@ CREATE TABLE posts (
     like_count INT DEFAULT 0,
     dislike_count INT DEFAULT 0,
     comment_count INT DEFAULT 0,
+    is_test BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (author_id) REFERENCES users(id),
     INDEX idx_title (title),
     INDEX idx_author_id (author_id),
@@ -108,6 +109,7 @@ CREATE TABLE comments (
     create_time DATETIME NOT NULL,
     like_count INT DEFAULT 0,
     dislike_count INT DEFAULT 0,
+    is_test BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (post_id) REFERENCES posts(id),
     FOREIGN KEY (author_id) REFERENCES users(id)
 );
@@ -134,6 +136,7 @@ CREATE TABLE anime_comments (
     parent_id BIGINT,
     like_count INT DEFAULT 0,
     dislike_count INT DEFAULT 0,
+    is_test BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (anime_id) REFERENCES animes(id),
     FOREIGN KEY (author_id) REFERENCES users(id),
     FOREIGN KEY (parent_id) REFERENCES anime_comments(id),

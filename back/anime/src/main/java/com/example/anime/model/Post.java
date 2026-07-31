@@ -26,6 +26,8 @@ public class Post {
     private Integer dislikeCount;
     @Column(name = "comment_count")
     private Integer commentCount;
+    @Column(name = "is_test", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean isTest = false;
 
     public Long getId() {
         return id;
@@ -89,5 +91,13 @@ public class Post {
 
     public void setCommentCount(Integer commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public Boolean getIsTest() {
+        return isTest;
+    }
+
+    public void setIsTest(Boolean isTest) {
+        this.isTest = isTest;
     }
 }

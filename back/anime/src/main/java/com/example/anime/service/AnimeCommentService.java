@@ -7,6 +7,7 @@ import com.example.anime.model.User;
 import com.example.anime.repository.AnimeCommentRepository;
 import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.CommentInteractionRepository;
+import com.example.anime.utils.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -71,14 +73,29 @@ public class AnimeCommentService {
         return savedComment;
     }
 
+    // 保存评论实体
+    public AnimeComment save(AnimeComment comment) {
+        return animeCommentRepository.save(comment);
+    }
+
+    // 过滤测试评论
+    private List<AnimeComment> filterTestComments(List<AnimeComment> comments) {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return comments;
+        }
+        return comments.stream()
+                .filter(c -> c.getIsTest() == null || !c.getIsTest())
+                .collect(Collectors.toList());
+    }
+
     // 获取动漫的所有顶级评论（不包含回复）
     public List<AnimeComment> getAnimeComments(Long animeId) {
-        return animeCommentRepository.findByAnimeIdAndParentIdIsNullOrderByCreateTimeDesc(animeId);
+        return filterTestComments(animeCommentRepository.findByAnimeIdAndParentIdIsNullOrderByCreateTimeDesc(animeId));
     }
 
     // 获取评论的子评论
     public List<AnimeComment> getCommentReplies(Long animeId, Long parentId) {
-        return animeCommentRepository.findByAnimeIdAndParentIdOrderByCreateTimeAsc(animeId, parentId);
+        return filterTestComments(animeCommentRepository.findByAnimeIdAndParentIdOrderByCreateTimeAsc(animeId, parentId));
     }
 
     // 点赞评论
@@ -266,12 +283,12 @@ public class AnimeCommentService {
             .filter(comment -> comment.getParentId() == null)
             .collect(java.util.stream.Collectors.toList());
         replies.addAll(topLevelComments);
-        return replies;
+        return filterTestComments(replies);
     }
     
     // 获取所有评论
     public List<AnimeComment> getAllComments() {
-        return animeCommentRepository.findAll();
+        return filterTestComments(animeCommentRepository.findAll());
     }
     
     // 删除用户的所有评论

@@ -37,4 +37,7 @@ public class AnimeComment {
 
     @Column(name = "dislike_count", nullable = false, columnDefinition = "INT DEFAULT 0")
     private Integer dislikeCount;
+
+    @Column(name = "is_test", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean isTest = false;
 }

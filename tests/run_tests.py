@@ -95,6 +95,35 @@ TEST_FILE_MAP = {
             "未授权访问: 无Token/普通用户Token",
         ]
     },
+    "test_performance.py": {
+        "模块": "性能测试",
+        "测试内容": [
+            "响应时间: 各接口单独响应时间检测",
+            "并发请求: 10/15/30并发请求测试",
+            "混合并发: 不同接口混合并发",
+            "高并发: 30并发请求稳定性",
+            "突发负载: 20请求突发吞吐量",
+            "持续负载: 3轮迭代持续负载",
+            "API稳定性: 20次重复请求/快速连续请求",
+            "前端页面加载: HTTP响应时间",
+        ]
+    },
+    "test_security.py": {
+        "模块": "安全测试",
+        "测试内容": [
+            "权限越界: 无Token/普通用户Token访问管理员接口",
+            "越权修改: 修改其他用户资料",
+            "XSS防护: 注册/登录/搜索/签名中的XSS注入",
+            "SQL注入防护: 登录/搜索/参数中的SQL注入",
+            "路径遍历: 头像/动漫ID中的路径遍历",
+            "Token安全: 过期/无效/空Token/无Bearer前缀",
+            "敏感信息泄露: 错误消息堆栈/响应头/用户枚举",
+            "CSRF防护: 无CSRFToken/GET状态变更",
+            "输入验证: 用户名边界/特殊字符/超大请求/Null字节",
+            "速率限制: 10次快速登录尝试",
+            "跨域安全: CORS预检/未授权来源",
+        ]
+    },
     "test_e2e_ui.py": {
         "模块": "E2E UI测试",
         "测试内容": [
@@ -537,7 +566,8 @@ def run_api_tests(report=False, parallel=False):
     """运行 API 测试"""
     files = ["test_api_auth.py", "test_api_anime.py",
              "test_api_forum.py", "test_api_user.py",
-             "test_api_file.py", "test_api_admin.py"]
+             "test_api_file.py", "test_api_admin.py",
+             "test_performance.py", "test_security.py"]
     return run_pytest(files, report=report, parallel=parallel)
 
 

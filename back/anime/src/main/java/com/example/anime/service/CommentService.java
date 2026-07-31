@@ -7,12 +7,14 @@ import com.example.anime.model.User;
 import com.example.anime.repository.CommentRepository;
 import com.example.anime.repository.ForumCommentInteractionRepository;
 import com.example.anime.repository.PostRepository;
+import com.example.anime.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class CommentService {
@@ -91,14 +93,24 @@ public class CommentService {
         return savedComment;
     }
 
+    // 过滤测试评论
+    private List<Comment> filterTestComments(List<Comment> comments) {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return comments;
+        }
+        return comments.stream()
+                .filter(c -> c.getIsTest() == null || !c.getIsTest())
+                .collect(Collectors.toList());
+    }
+
     // 获取帖子的顶级评论（不含回复）
     public List<Comment> getTopLevelComments(Long postId) {
-        return commentRepository.findByPostIdAndParentIdIsNull(postId);
+        return filterTestComments(commentRepository.findByPostIdAndParentIdIsNull(postId));
     }
 
     // 获取评论的回复列表
     public List<Comment> getReplies(Long parentId) {
-        return commentRepository.findByParentId(parentId);
+        return filterTestComments(commentRepository.findByParentId(parentId));
     }
 
     // 根据ID查找评论
@@ -106,16 +118,19 @@ public class CommentService {
         return commentRepository.findById(id).orElse(null);
     }
 
-    // 根据帖子ID获取评论列表
-    public List<Comment> getCommentsByPostId(Long postId) {
-        return commentRepository.findByPostId(postId);
+    // 保存评论
+    public Comment save(Comment comment) {
+        return commentRepository.save(comment);
     }
 
-
+    // 根据帖子ID获取评论列表
+    public List<Comment> getCommentsByPostId(Long postId) {
+        return filterTestComments(commentRepository.findByPostId(postId));
+    }
 
     // 根据用户ID获取评论列表
     public List<Comment> getCommentsByAuthorId(Long authorId) {
-        return commentRepository.findByAuthorId(authorId);
+        return filterTestComments(commentRepository.findByAuthorId(authorId));
     }
 
     // 删除评论（级联删除回复）
@@ -147,7 +162,7 @@ public class CommentService {
 
     // 根据帖子ID获取评论列表（用于管理员）
     public List<Comment> findByPostId(Long postId) {
-        return commentRepository.findByPostId(postId);
+        return filterTestComments(commentRepository.findByPostId(postId));
     }
 
     // 根据ID删除评论（用于管理员）

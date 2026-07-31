@@ -102,6 +102,11 @@ public class PostController {
         post.setTitle(title);
         post.setContent(content);
         
+        // 支持测试标记
+        if (request.get("isTest") != null) {
+            post.setIsTest(Boolean.valueOf(request.get("isTest").toString()));
+        }
+        
         return postService.savePost(post, username);
     }
 

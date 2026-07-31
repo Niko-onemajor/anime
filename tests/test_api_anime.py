@@ -140,7 +140,8 @@ class TestAnimeComment:
             resp = api_post("/api/anime/comment/add", headers=auth_headers, json_data={
                 "animeId": anime_id,
                 "content": "自动化测试评论",
-                "username": "testuser"
+                "username": "testuser",
+                "isTest": True
             })
             comment_data = resp.json()
             assert comment_data["code"] == 200

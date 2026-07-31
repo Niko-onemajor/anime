@@ -7,13 +7,14 @@ import com.example.anime.model.ForumPostInteraction;
 import com.example.anime.repository.PostRepository;
 import com.example.anime.repository.UserRepository;
 import com.example.anime.repository.ForumPostInteractionRepository;
-// import com.example.anime.service.CommentService;
+import com.example.anime.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class PostService {
@@ -53,11 +54,21 @@ public class PostService {
         }
     }
 
+    // 批量更新后过滤测试帖子
+    private List<Post> filterTestPosts(List<Post> posts) {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return posts;
+        }
+        return posts.stream()
+                .filter(p -> p.getIsTest() == null || !p.getIsTest())
+                .collect(Collectors.toList());
+    }
+
     // 获取所有帖子
     public List<Post> getAllPosts() {
         List<Post> posts = postRepository.findAllByOrderByCreateTimeDesc();
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 根据ID获取帖子
@@ -75,28 +86,28 @@ public class PostService {
     public List<Post> getPostsByAuthorId(Long authorId) {
         List<Post> posts = postRepository.findByAuthorId(authorId);
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 按时间排序获取帖子
     public List<Post> getPostsByTime() {
         List<Post> posts = postRepository.findAllByOrderByCreateTimeDesc();
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 按点赞数排序获取帖子
     public List<Post> getPostsByLikes() {
         List<Post> posts = postRepository.findAllByOrderByLikeCountDesc();
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 按点踩数排序获取帖子
     public List<Post> getPostsByDislikes() {
         List<Post> posts = postRepository.findAllByOrderByDislikeCountDesc();
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 保存帖子
@@ -256,21 +267,21 @@ public class PostService {
     public List<Post> findAll() {
         List<Post> posts = postRepository.findAll();
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 根据标题搜索帖子（用于管理员）
     public List<Post> findByTitleContaining(String keyword) {
         List<Post> posts = postRepository.findByTitleContaining(keyword);
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 根据标题或内容搜索帖子（用于管理员）
     public List<Post> searchByKeyword(String keyword) {
         List<Post> posts = postRepository.searchByKeyword(keyword);
         batchUpdatePostCounts(posts);
-        return posts;
+        return filterTestPosts(posts);
     }
 
     // 根据ID删除帖子（用于管理员）

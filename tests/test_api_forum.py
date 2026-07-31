@@ -29,7 +29,8 @@ class TestForumPost:
         resp = api_post("/api/post/create", headers=auth_headers, json_data={
             "title": "自动化测试帖子",
             "content": "这是自动化测试创建的帖子内容",
-            "username": "testuser"
+            "username": "testuser",
+            "isTest": True
         })
         data = resp.json()
         # 成功时返回帖子对象，失败时返回 {code, msg}
@@ -118,7 +119,8 @@ class TestForumComment:
             resp = api_post("/api/comment/addComment", headers=auth_headers, json_data={
                 "postId": post_id,
                 "content": "自动化测试评论",
-                "username": "testuser"
+                "username": "testuser",
+                "isTest": True
             })
             comment_data = resp.json()
             assert comment_data["code"] == 200

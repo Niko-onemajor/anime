@@ -90,4 +90,26 @@ const router = createRouter({
   routes
 })
 
+// 路由守卫：管理员权限检查
+router.beforeEach((to, from, next) => {
+  const adminRoutes = ['/test', '/admin/users', '/admin/animes', '/admin/forum', '/admin/deleted']
+
+  if (adminRoutes.some(route => to.path.startsWith(route))) {
+    const role = localStorage.getItem('role')
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+      next('/auth')
+      return
+    }
+
+    if (role !== 'admin' && role !== '1') {
+      next('/index')
+      return
+    }
+  }
+
+  next()
+})
+
 export default router

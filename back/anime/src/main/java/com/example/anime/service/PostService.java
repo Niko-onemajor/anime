@@ -123,6 +123,10 @@ public class PostService {
             post.setLikeCount(0);
             post.setDislikeCount(0);
             post.setCommentCount(0);
+            // 测试用户创建的帖子自动标记为测试数据
+            if (user.getIsTest() != null && user.getIsTest()) {
+                post.setIsTest(true);
+            }
             return postRepository.save(post);
         }
         return null;
@@ -307,6 +311,8 @@ public class PostService {
         }
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         if (fromUser == null) return;
+        // 测试用户不发送通知
+        if (fromUser.getIsTest() != null && fromUser.getIsTest()) return;
         notificationService.notifyPostLike(
             author.getId(),
             author.getUsername(),
@@ -324,6 +330,8 @@ public class PostService {
         }
         User fromUser = userRepository.findById(fromUserId).orElse(null);
         if (fromUser == null) return;
+        // 测试用户不发送通知
+        if (fromUser.getIsTest() != null && fromUser.getIsTest()) return;
         notificationService.notifyPostDislike(
             author.getId(),
             author.getUsername(),

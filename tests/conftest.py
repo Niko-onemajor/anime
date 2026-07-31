@@ -191,13 +191,38 @@ def _ensure_admin_account():
 
 
 def _mark_test_user():
-    """通过数据库将测试用户标记为 is_test = true"""
+    """通过数据库将测试用户及其所有内容标记为 is_test = true"""
     try:
         conn = pymysql.connect(**DB_CONFIG)
         cursor = conn.cursor()
+        # 标记测试用户
         cursor.execute("UPDATE users SET is_test = TRUE WHERE username = %s", (TEST_USERNAME,))
         if cursor.rowcount > 0:
             print(f"[INFO] 已将 {TEST_USERNAME} 标记为测试用户")
+        # 标记测试用户的帖子
+        cursor.execute("""
+            UPDATE posts SET is_test = TRUE 
+            WHERE author_id IN (SELECT id FROM users WHERE username = %s)
+            AND (is_test IS NULL OR is_test = FALSE)
+        """, (TEST_USERNAME,))
+        if cursor.rowcount > 0:
+            print(f"[INFO] 已将 {TEST_USERNAME} 的 {cursor.rowcount} 条帖子标记为测试数据")
+        # 标记测试用户的论坛评论
+        cursor.execute("""
+            UPDATE comments SET is_test = TRUE 
+            WHERE author_id IN (SELECT id FROM users WHERE username = %s)
+            AND (is_test IS NULL OR is_test = FALSE)
+        """, (TEST_USERNAME,))
+        if cursor.rowcount > 0:
+            print(f"[INFO] 已将 {TEST_USERNAME} 的 {cursor.rowcount} 条论坛评论标记为测试数据")
+        # 标记测试用户的动漫评论
+        cursor.execute("""
+            UPDATE anime_comments SET is_test = TRUE 
+            WHERE author_id IN (SELECT id FROM users WHERE username = %s)
+            AND (is_test IS NULL OR is_test = FALSE)
+        """, (TEST_USERNAME,))
+        if cursor.rowcount > 0:
+            print(f"[INFO] 已将 {TEST_USERNAME} 的 {cursor.rowcount} 条动漫评论标记为测试数据")
         conn.commit()
         cursor.close()
         conn.close()

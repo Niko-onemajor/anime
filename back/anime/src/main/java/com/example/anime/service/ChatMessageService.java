@@ -4,6 +4,7 @@ import com.example.anime.model.ChatMessage;
 import com.example.anime.model.User;
 import com.example.anime.repository.ChatMessageRepository;
 import com.example.anime.repository.UserRepository;
+import com.example.anime.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +39,11 @@ public class ChatMessageService {
             if (!conversationMap.containsKey(otherUserId)) {
                 Map<String, Object> conv = new HashMap<>();
                 User otherUser = userRepository.findByIdAndDeletedFalse(otherUserId);
+                // 非管理员不显示测试用户
+                if (otherUser != null && otherUser.getIsTest() != null && otherUser.getIsTest()
+                        && !SecurityUtils.isCurrentUserAdmin()) {
+                    continue;
+                }
                 conv.put("userId", otherUserId);
                 conv.put("username", otherUser != null ? otherUser.getUsername() : "未知用户");
                 conv.put("avatar", otherUser != null ? otherUser.getAvatar() : "");

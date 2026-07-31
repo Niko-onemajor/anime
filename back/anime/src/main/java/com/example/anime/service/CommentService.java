@@ -48,16 +48,24 @@ public class CommentService {
         comment.setCreateTime(new Date());
         comment.setLikeCount(0);
         comment.setDislikeCount(0);
+        // 测试用户创建的评论自动标记为测试数据
+        User author = userService.findById(authorId);
+        if (author != null && author.getIsTest() != null && author.getIsTest()) {
+            comment.setIsTest(true);
+        }
         Comment savedComment = commentRepository.save(comment);
+
+        // 测试用户不发送通知给真实用户
+        User fromUser = userService.findById(authorId);
+        boolean isTestUser = fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest();
 
         // 回复评论时通知被回复用户
         if (parentId != null) {
             Comment parentComment = commentRepository.findById(parentId).orElse(null);
             if (parentComment != null && !parentComment.getAuthorId().equals(authorId)) {
                 User targetUser = userService.findById(parentComment.getAuthorId());
-                User fromUser = userService.findById(authorId);
                 Post post = postRepository.findById(postId).orElse(null);
-                if (targetUser != null && fromUser != null && post != null) {
+                if (targetUser != null && fromUser != null && post != null && !isTestUser) {
                     String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
                     notificationService.notifyForumReply(
                             targetUser.getId(),
@@ -74,8 +82,7 @@ public class CommentService {
             // 顶级评论：通知帖子作者
             Post post = postRepository.findById(postId).orElse(null);
             if (post != null && post.getAuthor() != null && !post.getAuthor().getId().equals(authorId)) {
-                User fromUser = userService.findById(authorId);
-                if (fromUser != null) {
+                if (fromUser != null && !isTestUser) {
                     String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
                     notificationService.notifyForumReply(
                             post.getAuthor().getId(),
@@ -223,6 +230,10 @@ public class CommentService {
             if (likeAdded && !comment.getAuthorId().equals(userId)) {
                 User targetUser = userService.findById(comment.getAuthorId());
                 User fromUser = userService.findById(userId);
+                // 测试用户不发送通知
+                if (fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest()) {
+                    return savedComment;
+                }
                 Post post = postRepository.findById(comment.getPostId()).orElse(null);
                 if (targetUser != null && fromUser != null && post != null) {
                     String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";
@@ -285,6 +296,10 @@ public class CommentService {
             if (dislikeAdded && !comment.getAuthorId().equals(userId)) {
                 User targetUser = userService.findById(comment.getAuthorId());
                 User fromUser = userService.findById(userId);
+                // 测试用户不发送通知
+                if (fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest()) {
+                    return savedComment;
+                }
                 Post post = postRepository.findById(comment.getPostId()).orElse(null);
                 if (targetUser != null && fromUser != null && post != null) {
                     String postTitle = post.getTitle() != null ? post.getTitle() : "未知帖子";

@@ -4,6 +4,7 @@ import com.example.anime.model.Follow;
 import com.example.anime.model.User;
 import com.example.anime.repository.FollowRepository;
 import com.example.anime.repository.UserRepository;
+import com.example.anime.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -54,6 +55,10 @@ public class FollowService {
         for (Follow follow : follows) {
             User user = userRepository.findByIdAndDeletedFalse(follow.getFollowedId());
             if (user != null) {
+                // 非管理员不显示测试用户
+                if (!SecurityUtils.isCurrentUserAdmin() && user.getIsTest() != null && user.getIsTest()) {
+                    continue;
+                }
                 users.add(user);
             }
         }
@@ -67,6 +72,10 @@ public class FollowService {
         for (Follow follow : follows) {
             User user = userRepository.findByIdAndDeletedFalse(follow.getFollowerId());
             if (user != null) {
+                // 非管理员不显示测试用户
+                if (!SecurityUtils.isCurrentUserAdmin() && user.getIsTest() != null && user.getIsTest()) {
+                    continue;
+                }
                 users.add(user);
             }
         }

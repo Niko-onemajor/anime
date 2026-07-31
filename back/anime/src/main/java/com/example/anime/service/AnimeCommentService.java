@@ -45,8 +45,16 @@ public class AnimeCommentService {
         comment.setParentId(parentId);
         comment.setLikeCount(0);
         comment.setDislikeCount(0);
+        // 测试用户创建的评论自动标记为测试数据
+        User author = userService.findById(authorId);
+        if (author != null && author.getIsTest() != null && author.getIsTest()) {
+            comment.setIsTest(true);
+        }
 
         AnimeComment savedComment = animeCommentRepository.save(comment);
+
+        // 测试用户不发送通知给真实用户
+        boolean isTestUser = author != null && author.getIsTest() != null && author.getIsTest();
 
         // 回复评论时通知被回复用户
         if (parentId != null) {
@@ -55,7 +63,7 @@ public class AnimeCommentService {
                 User targetUser = userService.findById(parentComment.getAuthorId());
                 User fromUser = userService.findById(authorId);
                 Anime anime = animeRepository.findById(animeId).orElse(null);
-                if (targetUser != null && fromUser != null && anime != null) {
+                if (targetUser != null && fromUser != null && anime != null && !isTestUser) {
                     String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
                     notificationService.notifyAnimeReply(
                             targetUser.getId(),
@@ -141,6 +149,10 @@ public class AnimeCommentService {
             if (likeAdded && !comment.getAuthorId().equals(userId)) {
                 User targetUser = userService.findById(comment.getAuthorId());
                 User fromUser = userService.findById(userId);
+                // 测试用户不发送通知
+                if (fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest()) {
+                    return savedComment;
+                }
                 Anime anime = animeRepository.findById(comment.getAnimeId()).orElse(null);
                 if (targetUser != null && fromUser != null && anime != null) {
                     String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";
@@ -203,6 +215,10 @@ public class AnimeCommentService {
             if (dislikeAdded && !comment.getAuthorId().equals(userId)) {
                 User targetUser = userService.findById(comment.getAuthorId());
                 User fromUser = userService.findById(userId);
+                // 测试用户不发送通知
+                if (fromUser != null && fromUser.getIsTest() != null && fromUser.getIsTest()) {
+                    return savedComment;
+                }
                 Anime anime = animeRepository.findById(comment.getAnimeId()).orElse(null);
                 if (targetUser != null && fromUser != null && anime != null) {
                     String animeTitle = anime.getTitle() != null ? anime.getTitle() : "未知动漫";

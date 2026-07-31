@@ -304,8 +304,9 @@ public class CommentService {
         return null;
     }
     
-    // 获取帖子的评论数（包括所有回复）
+    // 获取帖子的评论数（包括所有回复，过滤测试评论）
     public int getCommentCountByPostId(Long postId) {
-        return (int) commentRepository.countByPostId(postId);
+        List<Comment> comments = filterTestComments(commentRepository.findByPostId(postId));
+        return comments.size();
     }
 }

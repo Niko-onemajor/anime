@@ -190,6 +190,21 @@ def _ensure_admin_account():
         return False
 
 
+def _mark_test_user():
+    """通过数据库将测试用户标记为 is_test = true"""
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET is_test = TRUE WHERE username = %s", (TEST_USERNAME,))
+        if cursor.rowcount > 0:
+            print(f"[INFO] 已将 {TEST_USERNAME} 标记为测试用户")
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"[WARN] 无法标记测试用户: {e}")
+
+
 @pytest.fixture(scope="session")
 def admin_token(base_url):
     """获取管理员 JWT Token（自动创建 admin 账号）"""
@@ -245,6 +260,8 @@ def user_token(base_url):
     })
     data = resp.json()
     if data.get("code") == 200:
+        # 确保测试用户已标记
+        _mark_test_user()
         return data["data"]["token"]
 
     # 注册新账号
@@ -255,6 +272,8 @@ def user_token(base_url):
     })
     data = resp.json()
     if data.get("code") == 200:
+        # 标记为测试用户
+        _mark_test_user()
         # 登录获取 token
         resp = requests.post(f"{base_url}/api/user/login", json={
             "username": TEST_USERNAME,

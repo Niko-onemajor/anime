@@ -1764,14 +1764,13 @@ watch(
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .navbar-container {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 0 20px;
   height: 60px;
@@ -1786,6 +1785,7 @@ watch(
 .nav-links {
   display: flex;
   list-style: none;
+  margin-left: 30px;
 }
 
 .nav-links li {
@@ -1838,6 +1838,7 @@ watch(
   justify-content: center;
   transition: background 0.3s;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .nav-search-btn:hover {
   background: rgba(255,255,255,0.25);

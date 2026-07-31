@@ -704,7 +704,6 @@ onUnmounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 0 20px;
   height: 60px;
@@ -725,6 +724,7 @@ onUnmounted(() => {
 .nav-links {
   display: flex;
   list-style: none;
+  margin-left: 30px;
 }
 
 .nav-link {
@@ -782,6 +782,7 @@ onUnmounted(() => {
   justify-content: center;
   transition: background 0.3s;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .nav-search-btn:hover {
   background: rgba(255,255,255,0.25);

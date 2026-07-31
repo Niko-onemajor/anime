@@ -36,7 +36,8 @@ CREATE TABLE users (
     show_ratings BOOLEAN NOT NULL DEFAULT true,
     show_posts BOOLEAN NOT NULL DEFAULT true,
     show_comments BOOLEAN NOT NULL DEFAULT true,
-    show_follows BOOLEAN NOT NULL DEFAULT true
+    show_follows BOOLEAN NOT NULL DEFAULT true,
+    is_test BOOLEAN NOT NULL DEFAULT false
 );
 
 -- 创建动漫表

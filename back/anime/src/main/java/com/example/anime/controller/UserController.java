@@ -4,6 +4,7 @@ import com.example.anime.model.User;
 import com.example.anime.service.UserService;
 import com.example.anime.utils.JwtUtils;
 import com.example.anime.utils.OSSUtil;
+import com.example.anime.utils.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -447,6 +448,10 @@ public class UserController {
             List<User> users = userService.findByUsernameContaining(keyword.trim());
             List<Map<String, Object>> result = new ArrayList<>();
             for (User user : users) {
+                // 非管理员不显示测试用户
+                if (!SecurityUtils.isCurrentUserAdmin() && user.getIsTest() != null && user.getIsTest()) {
+                    continue;
+                }
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", user.getId());
                 item.put("username", user.getUsername());

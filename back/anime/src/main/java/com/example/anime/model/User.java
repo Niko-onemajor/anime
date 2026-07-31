@@ -80,6 +80,9 @@ public class User implements UserDetails {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean showFollows = true;
 
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean isTest = false;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptyList();

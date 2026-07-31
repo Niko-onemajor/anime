@@ -75,6 +75,10 @@ public class PostService {
     public Post getPostById(Long id) {
         Post post = postRepository.findById(id).orElse(null);
         if (post != null) {
+            // 非管理员不能查看测试帖子
+            if (!SecurityUtils.isCurrentUserAdmin() && post.getIsTest() != null && post.getIsTest()) {
+                return null;
+            }
             int commentCount = commentService.getCommentCountByPostId(post.getId());
             post.setCommentCount(commentCount);
             updatePostInteractionCounts(post);

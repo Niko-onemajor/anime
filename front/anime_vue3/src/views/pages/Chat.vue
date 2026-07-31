@@ -370,13 +370,15 @@ onUnmounted(() => {
   padding: 10px 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .navbar-container {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 0 20px;
   height: 60px;
@@ -391,6 +393,7 @@ onUnmounted(() => {
 .nav-links {
   display: flex;
   list-style: none;
+  margin-left: 30px;
 }
 
 .nav-links li {

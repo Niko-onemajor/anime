@@ -320,7 +320,7 @@ const handleSubmit = async () => {
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 400px;
+  max-width: 480px;
   animation: authFadeIn 0.5s ease;
 }
 

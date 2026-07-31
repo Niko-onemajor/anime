@@ -54,6 +54,7 @@ CREATE TABLE animes (
     view_count INT DEFAULT 0,
     deleted BOOLEAN NOT NULL DEFAULT false,
     deleted_at DATETIME,
+    is_test BOOLEAN NOT NULL DEFAULT false,
     INDEX idx_title (title),
     INDEX idx_genre (genre),
     INDEX idx_rating (rating),

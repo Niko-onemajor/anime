@@ -19,6 +19,7 @@ public class Anime {
     private Integer viewCount;
     private Boolean deleted = false;
     private java.util.Date deletedAt;
+    private Boolean isTest = false;
     
     // 默认构造函数
     public Anime() {
@@ -118,5 +119,13 @@ public class Anime {
 
     public void setDeletedAt(java.util.Date deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public Boolean getIsTest() {
+        return isTest;
+    }
+
+    public void setIsTest(Boolean isTest) {
+        this.isTest = isTest;
     }
 }

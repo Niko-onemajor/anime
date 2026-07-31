@@ -129,18 +129,24 @@ public class AnimeController {
         animeService.deleteAnime(id);
     }
     
-    // 将所有动漫设置为上架状态
+    // 将所有动漫设置为上架状态（排除测试动漫）
     @PostMapping("/publishAll")
     public Map<String, Object> publishAllAnimes() {
         Map<String, Object> response = new HashMap<>();
         try {
             List<Anime> animes = animeService.findAll();
+            int publishedCount = 0;
             for (Anime anime : animes) {
+                // 跳过测试动漫，不进行上架
+                if (Boolean.TRUE.equals(anime.getIsTest())) {
+                    continue;
+                }
                 anime.setStatus(1);
                 animeService.save(anime);
+                publishedCount++;
             }
             response.put("code", 200);
-            response.put("msg", "所有动漫已设置为上架状态");
+            response.put("msg", "已上架 " + publishedCount + " 部动漫（测试动漫已跳过）");
         } catch (Exception e) {
             response.put("code", 500);
             response.put("msg", "操作失败");

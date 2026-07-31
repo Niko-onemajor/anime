@@ -13,7 +13,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -35,6 +38,24 @@ public class SecurityConfig {
             .csrf()
             .disable()
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            .exceptionHandling()
+            .authenticationEntryPoint((request, response, authException) -> {
+                response.setContentType("application/json;charset=UTF-8");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                Map<String, Object> body = new HashMap<>();
+                body.put("code", 401);
+                body.put("msg", "未授权，请先登录");
+                response.getWriter().write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body));
+            })
+            .accessDeniedHandler((request, response, accessDeniedException) -> {
+                response.setContentType("application/json;charset=UTF-8");
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                Map<String, Object> body = new HashMap<>();
+                body.put("code", 403);
+                body.put("msg", "权限不足，无法访问");
+                response.getWriter().write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body));
+            })
             .and()
             .authorizeRequests()
             // 管理员接口需要 ADMIN 角色

@@ -15,7 +15,7 @@ TEST_PASSWORD = "Test@1234"
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Admin@123"
 
-# 数据库配置（用于创建 admin 账号）
+# 数据库配置（仅用于标记测试用户，不修改管理员账号）
 DB_CONFIG = {
     "host": "localhost",
     "port": 3306,
@@ -165,31 +165,6 @@ def frontend_url():
     return FRONTEND_URL
 
 
-def _ensure_admin_account():
-    """通过数据库直接创建 admin 账号（角色为 admin）"""
-    try:
-        conn = pymysql.connect(**DB_CONFIG)
-        cursor = conn.cursor()
-        # 检查 admin 是否存在
-        cursor.execute("SELECT id, role FROM users WHERE username = %s", (ADMIN_USERNAME,))
-        row = cursor.fetchone()
-        if row:
-            # 用户存在，检查角色
-            if row[1] not in ("admin", "1"):
-                cursor.execute("UPDATE users SET role = 'admin' WHERE username = %s", (ADMIN_USERNAME,))
-                conn.commit()
-        else:
-            # 创建 admin 用户（密码使用 BCrypt 加密的 Admin@1234）
-            # 先通过注册 API 创建，再通过 DB 改角色
-            pass
-        cursor.close()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"[WARN] 无法连接数据库创建 admin: {e}")
-        return False
-
-
 def _mark_test_user():
     """通过数据库将测试用户及其所有内容标记为 is_test = true"""
     try:
@@ -230,10 +205,36 @@ def _mark_test_user():
         print(f"[WARN] 无法标记测试用户: {e}")
 
 
+def _mark_test_animes():
+    """通过数据库将测试动漫标记为 is_test = true"""
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        # 检查 animes 表是否有 is_test 列
+        cursor.execute("SHOW COLUMNS FROM animes LIKE 'is_test'")
+        if not cursor.fetchone():
+            print("[WARN] animes 表缺少 is_test 列，请手动执行: ALTER TABLE animes ADD COLUMN is_test BOOLEAN DEFAULT FALSE;")
+            cursor.close()
+            conn.close()
+            return
+        # 标记标题包含"测试"或"test"的动漫为测试数据
+        cursor.execute("""
+            UPDATE animes SET is_test = TRUE 
+            WHERE (title LIKE '%测试%' OR title LIKE '%test%')
+            AND (is_test IS NULL OR is_test = FALSE)
+        """)
+        if cursor.rowcount > 0:
+            print(f"[INFO] 已将 {cursor.rowcount} 个测试动漫标记为测试数据")
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"[WARN] 无法标记测试动漫: {e}")
+
+
 @pytest.fixture(scope="session")
 def admin_token(base_url):
-    """获取管理员 JWT Token（自动创建 admin 账号）"""
-    # 先尝试登录
+    """获取管理员 JWT Token（仅尝试登录，不修改数据库）"""
     resp = requests.post(f"{base_url}/api/user/login", json={
         "username": ADMIN_USERNAME,
         "password": ADMIN_PASSWORD
@@ -242,36 +243,7 @@ def admin_token(base_url):
     if data.get("code") == 200:
         return data["data"]["token"]
 
-    # 尝试通过注册 API 创建 admin 用户
-    resp = requests.post(f"{base_url}/api/user/register", json={
-        "username": ADMIN_USERNAME,
-        "password": ADMIN_PASSWORD,
-        "email": "admin@anime.com"
-    })
-    data = resp.json()
-    if data.get("code") == 200:
-        # 注册成功，通过 DB 将角色改为 admin
-        _ensure_admin_account()
-        # 重新登录
-        resp = requests.post(f"{base_url}/api/user/login", json={
-            "username": ADMIN_USERNAME,
-            "password": ADMIN_PASSWORD
-        })
-        data = resp.json()
-        if data.get("code") == 200:
-            return data["data"]["token"]
-
-    # 如果 DB 连接失败，尝试通过 DB 直接创建
-    if _ensure_admin_account():
-        resp = requests.post(f"{base_url}/api/user/login", json={
-            "username": ADMIN_USERNAME,
-            "password": ADMIN_PASSWORD
-        })
-        data = resp.json()
-        if data.get("code") == 200:
-            return data["data"]["token"]
-
-    pytest.skip("无法创建管理员账号，跳过管理员相关测试")
+    pytest.skip("管理员登录失败，跳过管理员相关测试")
     return None
 
 
@@ -287,6 +259,7 @@ def user_token(base_url):
     if data.get("code") == 200:
         # 确保测试用户已标记
         _mark_test_user()
+        _mark_test_animes()
         return data["data"]["token"]
 
     # 注册新账号
@@ -299,6 +272,7 @@ def user_token(base_url):
     if data.get("code") == 200:
         # 标记为测试用户
         _mark_test_user()
+        _mark_test_animes()
         # 登录获取 token
         resp = requests.post(f"{base_url}/api/user/login", json={
             "username": TEST_USERNAME,

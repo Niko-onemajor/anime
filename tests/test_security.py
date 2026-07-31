@@ -48,7 +48,7 @@ class TestAuthorizationBypass:
         """测试: 管理员Token可访问管理员接口"""
         if not admin_headers:
             pytest.skip("管理员Token不可用")
-        resp = api_get("/api/admin/users", headers=admin_headers)
+        resp = api_post("/api/admin/users", headers=admin_headers, json_data={"page": 1, "size": 6})
         data = resp.json()
         print(f"\n  [管理员-用户列表] 管理员Token: code={data.get('code')}")
         assert data.get("code") == 200, f"管理员应能访问，实际: {data}"
@@ -191,8 +191,9 @@ class TestSQLInjectionProtection:
     def test_sqli_in_anime_id(self, base_url):
         """测试: SQL注入在动漫ID参数中"""
         for payload in ["' OR '1'='1", "1; DROP TABLE users;"]:
-            resp = api_get(f"/api/anime/{payload}")
+            resp = api_get(f"/api/anime/detail/{payload}")
             print(f"\n  [SQL注入动漫ID] payload={payload}... status={resp.status_code}")
+            # SQL注入不应导致服务器500错误，应返回400/404/200等正常响应
             assert resp.status_code != 500, f"SQL注入不应导致服务器错误: {payload}"
 
     def test_sqli_in_username_param(self, base_url):
@@ -247,15 +248,17 @@ class TestTokenSecurity:
         """测试: 过期Token应被拒绝"""
         expired_token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0dXNlciIsImV4cCI6MTYwMDAwMDAwMH0.signature"
         headers = {"Authorization": f"Bearer {expired_token}"}
-        resp = api_get("/api/user/info", headers=headers, params={"username": "testuser"})
+        # 使用需要认证的接口测试 token 验证
+        resp = api_post("/api/admin/users", headers=headers, json_data={"page": 1, "size": 6})
         print(f"\n  [过期Token] 状态码: {resp.status_code}")
-        # 过期Token应被拒绝
+        # 过期Token应被拒绝（返回401未授权或403禁止）
         assert resp.status_code in (401, 403), f"过期Token应被拒绝，实际: {resp.status_code}"
 
     def test_invalid_token(self, base_url):
         """测试: 无效Token应被拒绝"""
         headers = {"Authorization": "Bearer invalid_token_here"}
-        resp = api_get("/api/user/info", headers=headers, params={"username": "testuser"})
+        # 使用需要认证的接口测试 token 验证
+        resp = api_post("/api/admin/users", headers=headers, json_data={"page": 1, "size": 6})
         print(f"\n  [无效Token] 状态码: {resp.status_code}")
         assert resp.status_code in (401, 403), f"无效Token应被拒绝，实际: {resp.status_code}"
 

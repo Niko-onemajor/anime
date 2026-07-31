@@ -608,10 +608,14 @@ public class AdminController {
         try {
             Long animeId = request.get("id");
             
-            // 先删除动漫的所有集数
-            List<Episode> episodes = episodeService.getEpisodesByAnimeId(animeId);
-            for (Episode episode : episodes) {
-                episodeService.delete(episode.getId());
+            // 先删除动漫的所有集数（失败不影响动漫删除）
+            try {
+                List<Episode> episodes = episodeService.getEpisodesByAnimeId(animeId);
+                for (Episode episode : episodes) {
+                    episodeService.delete(episode.getId());
+                }
+            } catch (Exception e) {
+                log.warn("删除动漫集数时出错，继续删除动漫: {}", e.getMessage());
             }
             
             // 再删除动漫

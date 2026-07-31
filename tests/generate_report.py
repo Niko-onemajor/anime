@@ -1,6 +1,7 @@
 """
 自定义 HTML 测试报告生成器
 生成可直接在浏览器中查看的详细测试报告，每个用例可以展开查看错误详情
+（不生成 XML 文件，直接从 pytest stdout 解析结果）
 """
 import json
 import os
@@ -8,7 +9,6 @@ import subprocess
 import sys
 import re
 from datetime import datetime
-from xml.etree import ElementTree as ET
 
 
 # 测试方法 → 中文备注 映射表
@@ -145,15 +145,117 @@ def get_remark(test_name):
     return TEST_METHOD_REMARKS.get(test_name, "")
 
 
-def run_pytest_and_get_results(test_files, parallel=False):
-    """运行 pytest 并生成 JUnit XML 报告，然后解析结果"""
-    xml_path = "reports/results.xml"
-    os.makedirs("reports", exist_ok=True)
+def parse_pytest_stdout(output: str):
+    """直接从 pytest stdout 解析测试结果（不依赖 XML 文件）"""
+    test_results = []
 
+    # 匹配两种格式:
+    # 1. 渐进输出: test_file.py::Class::method <- path STATUS [xx%]
+    # 2. 摘要输出: STATUS test_file.py::Class::method - message
+    test_pattern_a = re.compile(
+        r'(test_\w+\.py)::(\w+)::(\w+).*?\s(PASSED|FAILED|SKIPPED|ERROR)'
+    )
+    test_pattern_b = re.compile(
+        r'(PASSED|FAILED|SKIPPED|ERROR)\s+(test_\w+\.py)::(\w+)::(\w+)'
+    )
+
+    # 收集所有测试用例
+    tests_by_name = {}
+    for line in output.splitlines():
+        m = test_pattern_a.search(line)
+        if m:
+            file, cls, method, status = m.groups()
+            full_name = f"{cls}.{method}"
+            tests_by_name[full_name] = {
+                "suite": file,
+                "classname": cls,
+                "name": method,
+                "status": status.lower(),
+                "message": "",
+                "traceback": "",
+            }
+            continue
+        m = test_pattern_b.search(line)
+        if m:
+            status, file, cls, method = m.groups()
+            full_name = f"{cls}.{method}"
+            if full_name not in tests_by_name:
+                tests_by_name[full_name] = {
+                    "suite": file,
+                    "classname": cls,
+                    "name": method,
+                    "status": status.lower(),
+                    "message": "",
+                    "traceback": "",
+                }
+
+    if not tests_by_name:
+        return test_results
+
+    # 解析 FAILURES 部分提取错误详情
+    failure_pattern = re.compile(
+        r'_{10,}\s*\n\s*(\w+\.\w+)\s*_{10,}\s*\n(.*?)(?=_{10,}|={10,}|\Z)',
+        re.DOTALL
+    )
+
+    failures = {}
+    for m in failure_pattern.finditer(output):
+        test_name = m.group(1)
+        detail = m.group(2).strip()
+        failures[test_name] = detail
+
+    # 解析错误摘要行
+    error_summary_pattern = re.compile(
+        r'(FAILED|ERROR)\s+(test_\w+\.py::\w+::\w+)\s*-\s*(.*?)(?=\n|$)'
+    )
+    error_summaries = {}
+    for m in error_summary_pattern.finditer(output):
+        full_path = m.group(2)
+        parts = full_path.split("::")
+        if len(parts) >= 3:
+            test_name = f"{parts[1]}.{parts[2]}"
+            error_summaries[test_name] = m.group(3).strip()
+
+    # 关联错误详情
+    for test_name, detail in failures.items():
+        error_msg = ""
+        for line in detail.splitlines():
+            stripped = line.strip()
+            if "AssertionError" in stripped or "Error" in stripped:
+                error_msg = stripped
+                break
+        if not error_msg:
+            for line in detail.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("E "):
+                    error_msg = stripped[2:]
+                    break
+
+        for key, entry in tests_by_name.items():
+            if test_name in key or key in test_name:
+                if entry["status"] in ("failed", "error"):
+                    entry["message"] = error_msg or detail[:200]
+                    entry["traceback"] = detail
+                break
+
+    for test_name, summary in error_summaries.items():
+        for key, entry in tests_by_name.items():
+            if test_name in key or key in test_name:
+                if entry["status"] in ("failed", "error") and not entry["message"]:
+                    entry["message"] = summary
+                break
+
+    for entry in tests_by_name.values():
+        test_results.append(entry)
+
+    return test_results
+
+
+def run_pytest_and_get_results(test_files, parallel=False):
+    """运行 pytest 并直接从 stdout 解析结果（不生成 XML 文件）"""
     cmd = [
-        "pytest", *test_files,
-        "-v", "--tb=long",
-        f"--junitxml={xml_path}"
+        sys.executable, "-m", "pytest", *test_files,
+        "-v", "--tb=short", "--color=no"
     ]
     if parallel:
         cmd.extend(["-n", "auto"])
@@ -164,57 +266,10 @@ def run_pytest_and_get_results(test_files, parallel=False):
     if result.stderr:
         print(result.stderr)
 
-    # 解析 JUnit XML
-    test_results = []
-    if os.path.exists(xml_path):
-        try:
-            tree = ET.parse(xml_path)
-            root = tree.getroot()
+    combined_output = result.stdout + "\n" + result.stderr
 
-            for testsuite in root.findall("testsuite"):
-                suite_name = testsuite.get("name", "")
-                for testcase in testsuite.findall("testcase"):
-                    classname = testcase.get("classname", "")
-                    name = testcase.get("name", "")
-                    time = testcase.get("time", "0")
-
-                    entry = {
-                        "suite": suite_name,
-                        "classname": classname,
-                        "name": name,
-                        "time": time,
-                        "status": "passed",
-                        "message": "",
-                        "traceback": "",
-                    }
-
-                    failure = testcase.find("failure")
-                    error = testcase.find("error")
-                    skipped = testcase.find("skipped")
-
-                    if failure is not None:
-                        msg = failure.get("message", "")
-                        tb = failure.text or ""
-                        entry["status"] = "failed"
-                        entry["message"] = msg
-                        entry["traceback"] = tb
-                    elif error is not None:
-                        msg = error.get("message", "")
-                        tb = error.text or ""
-                        entry["status"] = "error"
-                        entry["message"] = msg
-                        entry["traceback"] = tb
-                    elif skipped is not None:
-                        msg = skipped.get("message", "")
-                        entry["status"] = "skipped"
-                        entry["message"] = msg
-
-                    test_results.append(entry)
-        except ET.ParseError as e:
-            print(f"[WARN] 无法解析 JUnit XML: {e}")
-        except Exception as e:
-            print(f"[WARN] 解析测试结果时出错: {e}")
-
+    # 直接从 stdout 解析测试结果
+    test_results = parse_pytest_stdout(combined_output)
     return test_results, result.stdout
 
 

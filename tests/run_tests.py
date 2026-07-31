@@ -16,7 +16,6 @@ import argparse
 import re
 import json
 from datetime import datetime
-from xml.etree import ElementTree as ET
 
 # ============================================================
 # 测试文件 → 测试内容 映射表
@@ -363,59 +362,119 @@ def html_escape(text):
     )
 
 
-def parse_junit_xml(xml_path):
-    """解析 JUnit XML 测试结果"""
+def parse_pytest_stdout_for_html(output: str):
+    """解析 pytest stdout 输出，提取结构化测试结果（含错误详情）"""
     test_results = []
-    if not os.path.exists(xml_path):
-        return test_results
 
-    try:
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
+    # 匹配两种格式:
+    # 1. 渐进输出: test_file.py::Class::method <- path STATUS [xx%]
+    # 2. 摘要输出: STATUS test_file.py::Class::method - message
+    test_pattern_a = re.compile(
+        r'(test_\w+\.py)::(\w+)::(\w+).*?\s(PASSED|FAILED|SKIPPED|ERROR)'
+    )
+    test_pattern_b = re.compile(
+        r'(PASSED|FAILED|SKIPPED|ERROR)\s+(test_\w+\.py)::(\w+)::(\w+)'
+    )
 
-        for testsuite in root.findall("testsuite"):
-            suite_name = testsuite.get("name", "")
-            for testcase in testsuite.findall("testcase"):
-                classname = testcase.get("classname", "")
-                name = testcase.get("name", "")
-                time = testcase.get("time", "0")
-
-                entry = {
-                    "suite": suite_name,
-                    "classname": classname,
-                    "name": name,
-                    "time": time,
-                    "status": "passed",
+    # 先收集所有测试用例
+    tests_by_name = {}
+    for line in output.splitlines():
+        # 尝试格式A: file::class::method STATUS
+        m = test_pattern_a.search(line)
+        if m:
+            file, cls, method, status = m.groups()
+            full_name = f"{cls}.{method}"
+            tests_by_name[full_name] = {
+                "suite": file,
+                "classname": cls,
+                "name": method,
+                "status": status.lower(),
+                "message": "",
+                "traceback": "",
+            }
+            continue
+        # 尝试格式B: STATUS file::class::method
+        m = test_pattern_b.search(line)
+        if m:
+            status, file, cls, method = m.groups()
+            full_name = f"{cls}.{method}"
+            if full_name not in tests_by_name:
+                tests_by_name[full_name] = {
+                    "suite": file,
+                    "classname": cls,
+                    "name": method,
+                    "status": status.lower(),
                     "message": "",
                     "traceback": "",
                 }
 
-                failure = testcase.find("failure")
-                error = testcase.find("error")
-                skipped = testcase.find("skipped")
+    if not tests_by_name:
+        return test_results
 
-                if failure is not None:
-                    msg = failure.get("message", "")
-                    tb = failure.text or ""
-                    entry["status"] = "failed"
-                    entry["message"] = msg
-                    entry["traceback"] = tb
-                elif error is not None:
-                    msg = error.get("message", "")
-                    tb = error.text or ""
-                    entry["status"] = "error"
-                    entry["message"] = msg
-                    entry["traceback"] = tb
-                elif skipped is not None:
-                    msg = skipped.get("message", "")
-                    entry["status"] = "skipped"
-                    entry["message"] = msg
+    # 解析 FAILURES 部分提取错误详情
+    # pytest 的失败详情格式:
+    # _______ TestClass.test_method _______
+    # ... 错误详情 ...
+    failure_pattern = re.compile(
+        r'_{10,}\s*\n\s*(\w+\.\w+)\s*_{10,}\s*\n(.*?)(?=_{10,}|={10,}|\Z)',
+        re.DOTALL
+    )
 
-                test_results.append(entry)
-    except ET.ParseError as e:
-        print(f"[WARN] 无法解析 JUnit XML: {e}")
-    except Exception as e:
-        print(f"[WARN] 解析测试结果时出错: {e}")
+    failures = {}
+    for m in failure_pattern.finditer(output):
+        test_name = m.group(1)
+        detail = m.group(2).strip()
+        failures[test_name] = detail
+
+    # 解析错误部分的摘要行
+    error_summary_pattern = re.compile(
+        r'(FAILED|ERROR)\s+(test_\w+\.py::\w+::\w+)\s*-\s*(.*?)(?=\n|$)'
+    )
+    error_summaries = {}
+    for m in error_summary_pattern.finditer(output):
+        full_path = m.group(2)
+        parts = full_path.split("::")
+        if len(parts) >= 3:
+            test_name = f"{parts[1]}.{parts[2]}"
+            error_summaries[test_name] = m.group(3).strip()
+
+    # 将错误详情关联到对应的测试用例
+    for test_name, detail in failures.items():
+        # 提取错误消息
+        error_msg = ""
+        tb_lines = []
+        in_tb = False
+        for line in detail.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("E "):
+                error_msg = stripped[2:] if not error_msg else error_msg
+            if stripped.startswith("E ") or "Error" in stripped or "assert" in stripped:
+                tb_lines.append(line)
+            if stripped and not stripped.startswith("E "):
+                if "Error" in stripped or "AssertionError" in stripped:
+                    error_msg = stripped
+
+        traceback = detail
+
+        # 匹配到对应的 test_entry
+        for key, entry in tests_by_name.items():
+            if test_name in key or key in test_name:
+                if entry["status"] in ("failed", "error"):
+                    entry["message"] = error_msg or detail[:200]
+                    entry["traceback"] = traceback or detail
+                break
+
+    # 也检查 error_summaries
+    for test_name, summary in error_summaries.items():
+        for key, entry in tests_by_name.items():
+            if test_name in key or key in test_name:
+                if entry["status"] in ("failed", "error") and not entry["message"]:
+                    entry["message"] = summary
+                break
+
+    # 转换为列表
+    for entry in tests_by_name.values():
+        test_results.append(entry)
 
     return test_results
 
@@ -632,25 +691,39 @@ def parse_pytest_output(output: str) -> dict:
     """解析 pytest 输出，提取每个测试用例的结果"""
     results = {"passed": [], "failed": [], "skipped": [], "error": []}
 
-    # 匹配 pytest 的测试结果行
-    # 格式: test_file.py::TestClass::test_method PASSED/FAILED/SKIPPED
-    result_pattern = re.compile(
-        r'(test_\w+\.py)::(\w+)::(\w+)\s+(PASSED|FAILED|SKIPPED|ERROR)'
+    # 匹配两种格式
+    result_pattern_a = re.compile(
+        r'(test_\w+\.py)::(\w+)::(\w+).*?\s(PASSED|FAILED|SKIPPED|ERROR)'
+    )
+    result_pattern_b = re.compile(
+        r'(PASSED|FAILED|SKIPPED|ERROR)\s+(test_\w+\.py)::(\w+)::(\w+)'
     )
 
+    seen = set()
     for line in output.splitlines():
-        m = result_pattern.search(line)
+        # 格式A: file::class::method STATUS
+        m = result_pattern_a.search(line)
         if m:
             file, cls, method, status = m.groups()
-            status_lower = status.lower()
-            entry = {"file": file, "class": cls, "method": method, "status": status}
-            if status_lower in results:
-                results[status_lower].append(entry)
-
-    # 提取失败测试的错误信息
-    error_pattern = re.compile(r'FAILED (test_\w+\.py::\w+::\w+).*?\n(.*?)(?=\n_+ |\n\w+\.py::|\Z)', re.DOTALL)
-    # 提取 AssertionError
-    assertion_pattern = re.compile(r'AssertionError[:\s]*(.*?)(?=\n\w)', re.DOTALL)
+            key = f"{file}::{cls}::{method}"
+            if key not in seen:
+                seen.add(key)
+                status_lower = status.lower()
+                entry = {"file": file, "class": cls, "method": method, "status": status}
+                if status_lower in results:
+                    results[status_lower].append(entry)
+            continue
+        # 格式B: STATUS file::class::method
+        m = result_pattern_b.search(line)
+        if m:
+            status, file, cls, method = m.groups()
+            key = f"{file}::{cls}::{method}"
+            if key not in seen:
+                seen.add(key)
+                status_lower = status.lower()
+                entry = {"file": file, "class": cls, "method": method, "status": status}
+                if status_lower in results:
+                    results[status_lower].append(entry)
 
     return results
 
@@ -687,7 +760,6 @@ def print_summary(results: dict, output: str):
     if results["failed"] or results["error"]:
         print(f"\n  [失败] {len(results['failed']) + len(results['error'])} 个 - 详情:")
 
-        # 提取失败用例的详细错误
         for item in results["failed"]:
             print(f"\n    X  {item['file']} -> {item['class']}::{item['method']}")
 
@@ -697,9 +769,7 @@ def print_summary(results: dict, output: str):
             output, re.DOTALL
         )
         for block in failure_blocks:
-            # 只打印包含 FAILURES 或 ERROR 的块
             if 'FAILURES' in block or 'ERRORS' in block:
-                # 提取关键错误信息
                 lines = block.strip().split('\n')
                 for line in lines:
                     line = line.strip()
@@ -714,15 +784,8 @@ def print_summary(results: dict, output: str):
 
 
 def run_pytest(test_files, report=False, parallel=False, extra_args=None):
-    """运行 pytest 并解析输出，当 report=True 时自动生成详细 HTML 报告"""
-    # 使用 sys.executable -m pytest 确保能找到 pytest
-    cmd = [sys.executable, "-m", "pytest"] + test_files + ["-v", "--tb=long", "--color=yes"]
-    junit_xml_path = None
-    if report:
-        os.makedirs("reports", exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        junit_xml_path = f"reports/results_{timestamp}.xml"
-        cmd.extend([f"--junitxml={junit_xml_path}"])
+    """运行 pytest 并解析输出，当 report=True 时自动生成详细 HTML 报告（不生成 XML）"""
+    cmd = [sys.executable, "-m", "pytest"] + test_files + ["-v", "--tb=short", "--color=no"]
     if parallel:
         cmd.extend(["-n", "auto"])
     if extra_args:
@@ -733,20 +796,26 @@ def run_pytest(test_files, report=False, parallel=False, extra_args=None):
     # 运行 pytest，捕获输出
     result = subprocess.run(cmd, capture_output=True, text=True)
 
-    # 打印 stdout（实时输出）
+    # 合并 stdout 和 stderr（pytest 进度输出可能在 stderr 中）
+    combined_output = result.stdout + "\n" + result.stderr
+
+    # 打印完整输出
     print(result.stdout)
     if result.stderr:
         print(result.stderr)
 
     # 解析结果并打印摘要
-    results = parse_pytest_output(result.stdout)
-    print_summary(results, result.stdout)
+    results = parse_pytest_output(combined_output)
+    print_summary(results, combined_output)
 
-    # 生成详细 HTML 报告（可展开查看错误详情）
-    if report and junit_xml_path and os.path.exists(junit_xml_path):
-        test_results = parse_junit_xml(junit_xml_path)
+    # 生成详细 HTML 报告（直接从 stdout 解析，不生成 XML）
+    if report:
+        os.makedirs("reports", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_path = f"reports/report_{timestamp}.html"
+
+        test_results = parse_pytest_stdout_for_html(combined_output)
         if test_results:
-            report_path = junit_xml_path.replace(".xml", ".html")
             path = generate_detailed_html_report(test_results, report_path)
             abs_path = os.path.abspath(path)
             print(f"\n{'=' * 60}")
@@ -756,7 +825,7 @@ def run_pytest(test_files, report=False, parallel=False, extra_args=None):
             print(f"  点击失败/错误行可展开查看完整错误详情")
             print(f"{'=' * 60}")
         else:
-            print(f"\n[WARN] JUnit XML 解析结果为空，跳过 HTML 报告生成")
+            print(f"\n[WARN] 未解析到测试结果，跳过 HTML 报告生成")
 
     return result.returncode
 

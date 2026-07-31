@@ -12,7 +12,7 @@
           <li><a href="/profile">个人中心</a></li>
           <li v-if="isAdmin"><a href="/admin/users">管理员后台</a></li>
         </ul>
-        <button class="nav-search-btn" @click="showSearchModal = true" title="搜索用户">
+        <button class="nav-search-btn" @click="showSearchModal = true" title="搜索动漫和用户">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
       </div>
@@ -287,27 +287,58 @@
       <p>© 2026 Niko动漫. 保留所有权利.</p>
     </div>
   </footer>
-<!-- 用户搜索弹窗 -->
-  <div class="search-overlay" v-if="showSearchModal" @click.self="showSearchModal = false">
+<!-- 搜索弹窗 -->
+  <div class="search-overlay" v-if="showSearchModal" @click.self="closeSearchModal">
     <div class="search-modal">
       <div class="search-modal-header">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input ref="searchInputRef" v-model="userSearchKeyword" class="search-modal-input" placeholder="搜索用户..." @input="onSearchInput" @keydown.esc="showSearchModal = false" />
-        <button class="search-modal-close" @click="showSearchModal = false">&times;</button>
+        <input
+          ref="searchInputRef"
+          v-model="userSearchKeyword"
+          class="search-modal-input"
+          placeholder="搜索动漫或用户..."
+          @input="onSearchInput"
+          @keydown.esc="closeSearchModal"
+        />
+        <button class="search-modal-close" @click="closeSearchModal">&times;</button>
+      </div>
+      <div class="search-tabs" v-if="userSearchKeyword.trim()">
+        <button class="search-tab" :class="{ active: searchTab === 'anime' }" @click="searchTab = 'anime'; onSearchInput()">
+          动漫 <span v-if="animeResults.length" class="tab-count">{{ animeResults.length }}</span>
+        </button>
+        <button class="search-tab" :class="{ active: searchTab === 'user' }" @click="searchTab = 'user'; onSearchInput()">
+          用户 <span v-if="userResults.length" class="tab-count">{{ userResults.length }}</span>
+        </button>
       </div>
       <div class="search-modal-body">
         <div v-if="searchLoading" class="search-loading">搜索中...</div>
-        <div v-else-if="searchResults.length === 0 && userSearchKeyword.trim()" class="search-empty">未找到相关用户</div>
-        <div v-else-if="searchResults.length === 0 && !userSearchKeyword.trim()" class="search-hint">输入用户名开始搜索</div>
-        <div v-else class="search-results">
-          <div v-for="user in searchResults" :key="user.id" class="search-result-item" @click="goToUserHomeFromSearch(user.username)">
-            <img :src="getImageUrl(user.avatar)" :alt="user.username" class="search-result-avatar" />
-            <div class="search-result-info">
-              <span class="search-result-name">{{ user.username }}</span>
-              <span class="search-result-sig">{{ user.signature || '这个人很懒，什么都没写' }}</span>
+        <template v-else-if="!userSearchKeyword.trim()">
+          <div class="search-hint">输入关键词搜索动漫或用户</div>
+        </template>
+        <template v-else-if="searchTab === 'anime'">
+          <div v-if="animeResults.length === 0" class="search-empty">未找到相关动漫</div>
+          <div v-else class="search-results">
+            <div v-for="anime in animeResults" :key="'anime-' + anime.id" class="search-result-item" @click="goToAnimeDetail(anime.id)">
+              <img :src="getImageUrl(anime.image)" :alt="anime.title" class="search-result-avatar search-result-cover" />
+              <div class="search-result-info">
+                <span class="search-result-name">{{ anime.title }}</span>
+                <span class="search-result-sig">{{ anime.genre || anime.category || '' }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <div v-if="userResults.length === 0" class="search-empty">未找到相关用户</div>
+          <div v-else class="search-results">
+            <div v-for="user in userResults" :key="'user-' + user.id" class="search-result-item" @click="goToUserHomeFromSearch(user.username)">
+              <img :src="getImageUrl(user.avatar)" :alt="user.username" class="search-result-avatar" />
+              <div class="search-result-info">
+                <span class="search-result-name">{{ user.username }}</span>
+                <span class="search-result-sig">{{ user.signature || '这个人很懒，什么都没写' }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -326,7 +357,9 @@ const router = useRouter();
 // 用户搜索
 const showSearchModal = ref(false);
 const userSearchKeyword = ref('');
-const searchResults = ref<any[]>([]);
+const searchTab = ref('anime');
+const userResults = ref<any[]>([]);
+const animeResults = ref<any[]>([]);
 const searchLoading = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -335,28 +368,66 @@ const onSearchInput = () => {
   if (searchTimer) clearTimeout(searchTimer);
   const keyword = userSearchKeyword.value.trim();
   if (!keyword) {
-    searchResults.value = [];
+    userResults.value = [];
+    animeResults.value = [];
     return;
   }
   searchLoading.value = true;
   searchTimer = setTimeout(async () => {
     try {
-      const res = await api.get('/api/user/search', { params: { keyword } });
-      if (res.data.code === 200) {
-        searchResults.value = res.data.data || [];
+      const [animeRes, userRes] = await Promise.allSettled([
+        api.post('/api/anime/search', { keyword }),
+        api.get('/api/user/search', { params: { keyword } })
+      ]);
+      
+      if (animeRes.status === 'fulfilled' && Array.isArray(animeRes.value.data)) {
+        animeResults.value = animeRes.value.data;
+      } else {
+        animeResults.value = [];
+      }
+      
+      if (userRes.status === 'fulfilled' && userRes.value.data?.code === 200) {
+        userResults.value = userRes.value.data.data || [];
+      } else {
+        userResults.value = [];
+      }
+      
+      if (searchTab.value === 'anime' && animeResults.value.length === 0 && userResults.value.length > 0) {
+        searchTab.value = 'user';
+      } else if (searchTab.value === 'user' && userResults.value.length === 0 && animeResults.value.length > 0) {
+        searchTab.value = 'anime';
       }
     } catch (e) {
-      console.error('搜索用户失败:', e);
+      console.error('搜索失败:', e);
     } finally {
       searchLoading.value = false;
     }
   }, 300);
 };
 
+const goToAnimeDetail = (animeId: number) => {
+  showSearchModal.value = false;
+  userSearchKeyword.value = '';
+  userResults.value = [];
+  animeResults.value = [];
+  searchTab.value = 'anime';
+  router.push(`/anime/${animeId}`);
+};
+
+const closeSearchModal = () => {
+  showSearchModal.value = false;
+  userSearchKeyword.value = '';
+  userResults.value = [];
+  animeResults.value = [];
+  searchTab.value = 'anime';
+};
+
 const goToUserHomeFromSearch = (username: string) => {
   showSearchModal.value = false;
   userSearchKeyword.value = '';
-  searchResults.value = [];
+  userResults.value = [];
+  animeResults.value = [];
+  searchTab.value = 'anime';
   router.push(`/user/${username}`);
 };
 
@@ -1904,6 +1975,48 @@ watch(
 .search-modal-close:hover {
   color: #333;
 }
+.search-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.search-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.search-tab:hover {
+  color: #333;
+}
+.search-tab.active {
+  color: #ff6b6b;
+  border-bottom-color: #ff6b6b;
+  font-weight: 500;
+}
+.tab-count {
+  background: #f0f0f0;
+  color: #999;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+.search-tab.active .tab-count {
+  background: #ffebee;
+  color: #ff6b6b;
+}
 .search-modal-body {
   overflow-y: auto;
   flex: 1;
@@ -1937,6 +2050,9 @@ watch(
   object-fit: cover;
   background: #e0e0e0;
   flex-shrink: 0;
+}
+.search-result-cover {
+  border-radius: 4px;
 }
 .search-result-info {
   flex: 1;

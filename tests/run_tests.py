@@ -138,6 +138,199 @@ TEST_FILE_MAP = {
 }
 
 
+# ============================================================
+# 测试方法 → 中文备注 映射表
+# ============================================================
+TEST_METHOD_REMARKS = {
+    # 认证模块
+    "test_login_success": "验证正确用户名密码登录成功，返回Token和用户信息",
+    "test_login_wrong_password": "验证错误密码登录失败，返回401错误",
+    "test_login_empty_username": "验证空用户名登录被拒绝",
+    "test_register_weak_password": "验证弱密码注册被拒绝",
+    "test_register_short_password": "验证短密码（<8位）注册被拒绝",
+    "test_get_user_info": "验证通过用户名获取用户基本信息",
+    "test_get_user_profile": "验证获取用户完整公开资料",
+    "test_change_password": "验证修改密码流程（旧密码验证+新密码设置）",
+    "test_update_profile": "验证更新用户资料（昵称/邮箱/生日/签名等）",
+    "test_get_user_info_by_id": "验证通过用户ID获取用户信息",
+    "test_no_token_access": "验证无Token访问受保护接口返回401",
+    "test_refresh_token": "验证使用RefreshToken刷新AccessToken",
+    # 动漫模块
+    "test_get_anime_list": "验证获取动漫列表接口正常返回",
+    "test_get_anime_list_page": "验证动漫列表分页功能",
+    "test_anime_list_not_empty": "验证动漫列表不为空",
+    "test_get_anime_detail": "验证获取动漫详情（标题/简介/评分/集数等）",
+    "test_anime_detail_not_found": "验证查询不存在的动漫返回错误",
+    "test_weekly_ranking": "验证周榜排名数据",
+    "test_monthly_ranking": "验证月榜排名数据",
+    "test_yearly_ranking": "验证年榜排名数据",
+    "test_search_anime": "验证按关键词搜索动漫",
+    "test_search_empty": "验证空关键词搜索处理",
+    "test_filter_by_year": "验证按年份筛选动漫",
+    "test_filter_by_letter": "验证按首字母筛选动漫",
+    "test_get_anime_comments": "验证获取动漫评论列表",
+    "test_add_anime_comment": "验证添加动漫评论",
+    "test_get_comment_by_author": "验证按作者查询动漫评论",
+    "test_get_comment_replies": "验证获取评论回复列表",
+    "test_like_anime_comment": "验证点赞动漫评论",
+    "test_dislike_anime_comment": "验证点踩动漫评论",
+    "test_get_anime_by_rating": "验证按评分排序获取动漫",
+    "test_get_popular_anime": "验证获取热门动漫（按观看次数）",
+    "test_get_anime_watch_count": "验证获取单个动漫观看次数",
+    "test_get_all_watch_counts": "验证获取所有动漫观看次数",
+    "test_get_episodes_by_anime": "验证获取动漫的集数列表",
+    "test_get_specific_episode": "验证获取特定集数详情",
+    "test_get_personalized_recommendations": "验证个性化推荐接口",
+    # 论坛模块
+    "test_get_posts": "验证获取帖子列表",
+    "test_create_post": "验证创建新帖子",
+    "test_create_post_empty_title": "验证空标题帖子被拒绝",
+    "test_get_post_detail": "验证获取帖子详情",
+    "test_search_post": "验证搜索帖子",
+    "test_like_post": "验证点赞帖子",
+    "test_dislike_post": "验证点踩帖子",
+    "test_get_posts_by_time": "验证按时间排序帖子",
+    "test_get_posts_by_likes": "验证按点赞数排序帖子",
+    "test_get_forum_comments": "验证获取论坛评论列表",
+    "test_add_forum_comment": "验证添加论坛评论",
+    "test_like_comment": "验证点赞论坛评论",
+    "test_dislike_comment": "验证点踩论坛评论",
+    "test_get_comment_by_author_forum": "验证按作者获取论坛评论",
+    "test_get_post_interaction_status": "验证查询帖子互动状态",
+    # 用户/社交模块
+    "test_toggle_follow": "验证关注/取消关注切换",
+    "test_follow_status": "验证查询关注状态",
+    "test_follower_count": "验证获取粉丝数",
+    "test_following_count": "验证获取关注数",
+    "test_following_list": "验证获取关注列表",
+    "test_follower_list": "验证获取粉丝列表",
+    "test_add_favorite": "验证添加收藏",
+    "test_check_favorite": "验证检查收藏状态",
+    "test_list_favorites": "验证获取收藏列表",
+    "test_remove_favorite": "验证取消收藏",
+    "test_submit_rating": "验证提交评分",
+    "test_user_rating": "验证获取用户评分",
+    "test_user_rating_list": "验证获取评分列表",
+    "test_add_watch_history": "验证添加观看记录",
+    "test_list_watch_history": "验证获取观看记录列表",
+    "test_search_user": "验证搜索用户（测试用户应被过滤）",
+    "test_search_user_empty": "验证空关键词搜索用户",
+    "test_get_notifications": "验证获取通知列表",
+    "test_unread_count": "验证获取未读通知数",
+    "test_sync_notifications": "验证同步通知",
+    "test_mark_notification_read": "验证标记单个通知已读",
+    "test_mark_all_notifications_read": "验证标记全部通知已读",
+    "test_get_conversations": "验证获取聊天会话列表",
+    "test_send_message": "验证发送聊天消息",
+    "test_get_conversation": "验证获取聊天对话记录",
+    "test_mark_chat_read": "验证标记聊天消息已读",
+    "test_get_chat_unread_count": "验证获取聊天未读消息数",
+    "test_update_privacy": "验证更新隐私设置",
+    # 文件上传模块
+    "test_upload_avatar": "验证上传头像",
+    "test_upload_cover": "验证上传封面",
+    "test_upload_no_file": "验证无文件上传被拒绝",
+    "test_create_test_data": "验证生成测试数据",
+    "test_get_test_resource_url": "验证获取测试资源URL",
+    # 管理员模块
+    "test_get_users": "验证管理员获取用户列表",
+    "test_search_users": "验证管理员搜索用户",
+    "test_add_user": "验证管理员添加用户",
+    "test_update_user": "验证管理员更新用户信息",
+    "test_delete_user": "验证管理员删除用户",
+    "test_reset_password": "验证管理员重置用户密码",
+    "test_admin_change_password": "验证管理员修改密码",
+    "test_add_user_weak_password": "验证弱密码创建用户被拒绝",
+    "test_get_animes": "验证管理员获取动漫列表",
+    "test_search_animes": "验证管理员搜索动漫",
+    "test_add_anime": "验证管理员添加动漫",
+    "test_update_anime": "验证管理员更新动漫",
+    "test_delete_anime": "验证管理员删除动漫",
+    "test_toggle_anime_status": "验证管理员切换动漫状态",
+    "test_get_forum_posts": "验证管理员获取论坛帖子列表",
+    "test_search_forum_posts": "验证管理员搜索帖子",
+    "test_sort_posts": "验证管理员排序帖子",
+    "test_update_post": "验证管理员更新帖子",
+    "test_delete_post": "验证管理员删除帖子",
+    "test_get_forum_comments_admin": "验证管理员获取论坛评论",
+    "test_update_comment": "验证管理员更新评论",
+    "test_delete_comment": "验证管理员删除评论",
+    "test_get_deleted_users": "验证获取已删除用户列表",
+    "test_get_deleted_animes": "验证获取已删除动漫列表",
+    "test_get_deleted_episodes": "验证获取已删除集数列表",
+    "test_restore_user": "验证恢复已删除用户",
+    "test_restore_anime": "验证恢复已删除动漫",
+    "test_restore_episode": "验证恢复已删除集数",
+    "test_hard_delete_user": "验证彻底删除用户",
+    "test_hard_delete_anime": "验证彻底删除动漫",
+    "test_hard_delete_episode": "验证彻底删除集数",
+    "test_no_token_admin": "验证无Token访问管理员接口被拒绝",
+    "test_user_token_admin": "验证普通用户Token访问管理员接口被拒绝",
+    # 性能测试
+    "test_response_time": "检测各接口单独响应时间",
+    "test_concurrent_10": "10并发请求测试",
+    "test_concurrent_15": "15并发请求测试",
+    "test_concurrent_30": "30并发请求测试",
+    "test_mixed_concurrent": "不同接口混合并发测试",
+    "test_high_concurrent": "30并发请求稳定性测试",
+    "test_burst_load": "20请求突发吞吐量测试",
+    "test_sustained_load": "3轮迭代持续负载测试",
+    "test_api_stability": "20次重复请求稳定性测试",
+    "test_frontend_page_load": "前端页面HTTP响应时间测试",
+    # 安全测试
+    "test_unauthorized_admin_access": "验证无Token访问管理员接口",
+    "test_user_token_admin_access": "验证普通用户Token越权访问管理员接口",
+    "test_modify_other_profile": "验证越权修改其他用户资料",
+    "test_xss_register": "验证注册时的XSS注入防护",
+    "test_xss_login": "验证登录时的XSS注入防护",
+    "test_xss_search": "验证搜索时的XSS注入防护",
+    "test_xss_signature": "验证签名中的XSS注入防护",
+    "test_sql_injection_login": "验证登录SQL注入防护",
+    "test_sql_injection_search": "验证搜索SQL注入防护",
+    "test_sql_injection_param": "验证参数SQL注入防护",
+    "test_path_traversal_avatar": "验证头像路径遍历防护",
+    "test_path_traversal_anime_id": "验证动漫ID路径遍历防护",
+    "test_expired_token": "验证过期Token被拒绝",
+    "test_invalid_token": "验证无效Token被拒绝",
+    "test_empty_token": "验证空Token被拒绝",
+    "test_no_bearer_prefix": "验证无Bearer前缀Token被拒绝",
+    "test_error_message_no_stacktrace": "验证错误消息不泄露堆栈信息",
+    "test_response_headers_security": "验证响应头安全配置",
+    "test_user_enumeration": "验证防用户枚举",
+    "test_csrf_no_token": "验证无CSRFToken请求",
+    "test_csrf_get_state_change": "验证GET请求不触发状态变更",
+    "test_username_boundary": "验证用户名边界值测试",
+    "test_special_characters": "验证特殊字符输入处理",
+    "test_large_request": "验证超大请求处理",
+    "test_null_byte": "验证Null字节注入防护",
+    "test_rate_limit": "验证10次快速登录速率限制",
+    "test_cors_preflight": "验证CORS预检请求",
+    "test_cors_unauthorized_origin": "验证未授权来源CORS请求",
+    # E2E UI测试
+    "test_page_load_login": "验证登录页面加载",
+    "test_page_load_index": "验证首页加载",
+    "test_page_load_category": "验证分类页面加载",
+    "test_page_load_forum": "验证论坛页面加载",
+    "test_page_load_message": "验证消息页面加载",
+    "test_page_load_profile": "验证个人中心页面加载",
+    "test_navigation": "验证导航栏跳转各页面",
+    "test_login_flow_success": "验证正常登录流程",
+    "test_login_flow_wrong_password": "验证错误密码登录提示",
+    "test_login_flow_register_switch": "验证登录/注册切换",
+    "test_search_modal_open": "验证用户搜索弹窗打开",
+    "test_search_input": "验证搜索输入功能",
+    "test_anime_detail_page": "验证动漫详情页加载",
+    "test_anime_player_page": "验证播放页加载",
+    "test_user_home_page": "验证用户主页加载",
+    "test_user_home_tabs": "验证用户主页标签切换",
+}
+
+
+def get_remark(test_name):
+    """根据测试方法名获取中文备注"""
+    return TEST_METHOD_REMARKS.get(test_name, "")
+
+
 def print_test_list():
     """打印测试文件与测试内容的映射表"""
     print("=" * 70)
@@ -251,10 +444,13 @@ def generate_detailed_html_report(test_results, output_path):
 
         msg_short = msg[:200] + "..." if len(msg) > 200 else msg
 
+        # 获取中文备注
+        remark = get_remark(t['name'])
+
         if status in ("failed", "error"):
             detail_html = f"""
             <tr class="detail-row" id="detail-{i}">
-                <td colspan="4">
+                <td colspan="5">
                     <div class="error-detail">
                         <div class="error-message"><strong>错误信息:</strong> {html_escape(msg)}</div>
                         <pre class="traceback">{html_escape(tb)}</pre>
@@ -269,6 +465,7 @@ def generate_detailed_html_report(test_results, output_path):
             <td class="status-col"><span class="badge badge-{status}">{status_cn.get(status, status)}</span></td>
             <td class="name-col">{html_escape(t['name'])}</td>
             <td class="class-col">{html_escape(t['classname'])}</td>
+            <td class="remark-col">{html_escape(remark) if remark else '-'}</td>
             <td class="msg-col">{html_escape(msg_short) if msg else '-'}</td>
         </tr>
         {detail_html}"""
@@ -312,9 +509,10 @@ def generate_detailed_html_report(test_results, output_path):
         .badge-error {{ background: #fff3e0; color: #e67e22; }}
         .badge-skipped {{ background: #f0f0f0; color: #95a5a6; }}
         .status-col {{ width: 70px; }}
-        .name-col {{ max-width: 350px; word-break: break-all; }}
-        .class-col {{ max-width: 250px; color: #888; font-size: 13px; }}
-        .msg-col {{ max-width: 300px; color: #999; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+        .name-col {{ max-width: 250px; word-break: break-all; }}
+        .class-col {{ max-width: 200px; color: #888; font-size: 13px; }}
+        .remark-col {{ max-width: 300px; color: #555; font-size: 13px; }}
+        .msg-col {{ max-width: 250px; color: #999; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
         .detail-row {{ display: none; }}
         .detail-row.show {{ display: table-row; }}
         .detail-row td {{ padding: 0; }}
@@ -374,6 +572,7 @@ def generate_detailed_html_report(test_results, output_path):
                     <th>状态</th>
                     <th>测试用例</th>
                     <th>所属类</th>
+                    <th>测试说明</th>
                     <th>备注</th>
                 </tr>
             </thead>

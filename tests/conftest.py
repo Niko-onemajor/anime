@@ -5,12 +5,25 @@ import pytest
 import requests
 import json
 import os
+import pymysql
 
 # --- 基础配置 ---
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8080")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 TEST_USERNAME = "testuser"
-TEST_PASSWORD = "Test1234"
+TEST_PASSWORD = "Test@1234"
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "Test@1234"
+
+# 数据库配置（用于创建 admin 账号）
+DB_CONFIG = {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "123456",
+    "database": "anime",
+    "charset": "utf8mb4",
+}
 
 # 测试报告输出目录
 REPORT_DIR = os.path.join(os.path.dirname(__file__), "reports")
@@ -83,30 +96,39 @@ def pytest_collection_modifyitems(config, items):
     DESC_MAP = {
         "TestAuth": "认证模块",
         "TestToken": "Token管理",
+        "TestProfile": "用户资料",
         "TestAnimeList": "动漫列表",
         "TestAnimeDetail": "动漫详情",
         "TestAnimeRanking": "排行榜",
         "TestAnimeFilter": "动漫筛选",
         "TestAnimeComment": "动漫评论",
+        "TestAnimeInteraction": "动漫互动",
+        "TestAnimeExtra": "动漫扩展",
+        "TestEpisode": "集数管理",
+        "TestRecommendation": "推荐功能",
         "TestForumPost": "论坛帖子",
         "TestForumComment": "论坛评论",
+        "TestForumInteraction": "论坛互动",
         "TestFollow": "关注功能",
         "TestFavorite": "收藏功能",
         "TestRating": "评分功能",
         "TestWatchHistory": "观看记录",
         "TestUserSearch": "用户搜索",
         "TestNotification": "通知功能",
+        "TestNotificationAction": "通知操作",
         "TestChat": "聊天功能",
+        "TestChatAction": "聊天操作",
         "TestPrivacy": "隐私设置",
         "TestAdminUserManagement": "管理员-用户管理",
         "TestAdminAnimeManagement": "管理员-动漫管理",
         "TestAdminForumManagement": "管理员-论坛管理",
         "TestAdminDeletedRecords": "管理员-删除记录",
         "TestAdminUnauthorizedAccess": "管理员-权限控制",
+        "TestFileUpload": "文件上传",
+        "TestMisc": "杂项接口",
         "TestPageLoads": "页面加载",
         "TestNavigation": "页面导航",
         "TestLoginFlow": "登录流程",
-        "TestUserSearch": "用户搜索",
         "TestAnimeDetail": "动漫详情页",
         "TestUserHome": "用户主页",
     }
@@ -128,17 +150,73 @@ def frontend_url():
     return FRONTEND_URL
 
 
+def _ensure_admin_account():
+    """通过数据库直接创建 admin 账号（角色为 admin）"""
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        # 检查 admin 是否存在
+        cursor.execute("SELECT id, role FROM users WHERE username = %s", (ADMIN_USERNAME,))
+        row = cursor.fetchone()
+        if row:
+            # 用户存在，检查角色
+            if row[1] not in ("admin", "1"):
+                cursor.execute("UPDATE users SET role = 'admin' WHERE username = %s", (ADMIN_USERNAME,))
+                conn.commit()
+        else:
+            # 创建 admin 用户（密码使用 BCrypt 加密的 Admin@1234）
+            # 先通过注册 API 创建，再通过 DB 改角色
+            pass
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[WARN] 无法连接数据库创建 admin: {e}")
+        return False
+
+
 @pytest.fixture(scope="session")
 def admin_token(base_url):
-    """获取管理员 JWT Token（前提：admin 账号已存在）"""
+    """获取管理员 JWT Token（自动创建 admin 账号）"""
+    # 先尝试登录
     resp = requests.post(f"{base_url}/api/user/login", json={
-        "username": "admin",
-        "password": "Admin123"
+        "username": ADMIN_USERNAME,
+        "password": ADMIN_PASSWORD
     })
     data = resp.json()
     if data.get("code") == 200:
         return data["data"]["token"]
-    pytest.skip("管理员账号不存在或密码错误，跳过管理员相关测试")
+
+    # 尝试通过注册 API 创建 admin 用户
+    resp = requests.post(f"{base_url}/api/user/register", json={
+        "username": ADMIN_USERNAME,
+        "password": ADMIN_PASSWORD,
+        "email": "admin@anime.com"
+    })
+    data = resp.json()
+    if data.get("code") == 200:
+        # 注册成功，通过 DB 将角色改为 admin
+        _ensure_admin_account()
+        # 重新登录
+        resp = requests.post(f"{base_url}/api/user/login", json={
+            "username": ADMIN_USERNAME,
+            "password": ADMIN_PASSWORD
+        })
+        data = resp.json()
+        if data.get("code") == 200:
+            return data["data"]["token"]
+
+    # 如果 DB 连接失败，尝试通过 DB 直接创建
+    if _ensure_admin_account():
+        resp = requests.post(f"{base_url}/api/user/login", json={
+            "username": ADMIN_USERNAME,
+            "password": ADMIN_PASSWORD
+        })
+        data = resp.json()
+        if data.get("code") == 200:
+            return data["data"]["token"]
+
+    pytest.skip("无法创建管理员账号，跳过管理员相关测试")
     return None
 
 

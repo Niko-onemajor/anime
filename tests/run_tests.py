@@ -16,6 +16,7 @@ import argparse
 import re
 import json
 from datetime import datetime
+from xml.etree import ElementTree as ET
 
 # ============================================================
 # 测试文件 → 测试内容 映射表
@@ -28,6 +29,7 @@ TEST_FILE_MAP = {
             "注册弱密码/短密码被拒绝",
             "获取用户信息/公开资料",
             "修改密码/Token刷新",
+            "更新用户资料/通过ID查用户",
             "无Token访问受保护接口",
         ]
     },
@@ -39,7 +41,11 @@ TEST_FILE_MAP = {
             "周榜/月榜/年榜",
             "搜索动漫/空关键词搜索",
             "按年份/字母筛选",
-            "动漫评论列表/添加评论/按作者查评论",
+            "动漫评论列表/添加评论/回复/按作者查评论",
+            "动漫评论点赞/点踩",
+            "按评分排序/按观看次数热门/观看次数查询",
+            "集数列表/获取特定集数",
+            "热门推荐/个性化推荐",
         ]
     },
     "test_api_forum.py": {
@@ -47,9 +53,10 @@ TEST_FILE_MAP = {
         "测试内容": [
             "帖子列表/创建帖子/空标题拒绝",
             "帖子详情/搜索帖子",
-            "点赞帖子/按时间排序/按点赞排序",
-            "论坛评论列表/添加评论/点赞评论",
+            "点赞帖子/点踩帖子/按时间排序/按点赞排序",
+            "论坛评论列表/添加评论/点赞评论/点踩评论",
             "按作者获取论坛评论",
+            "帖子互动状态查询",
         ]
     },
     "test_api_user.py": {
@@ -57,23 +64,34 @@ TEST_FILE_MAP = {
         "测试内容": [
             "关注/取消关注/关注状态/粉丝数/关注数",
             "关注列表/粉丝列表",
-            "添加收藏/检查收藏状态/收藏列表",
+            "添加收藏/检查收藏状态/收藏列表/取消收藏",
             "提交评分/用户评分/评分列表",
             "观看记录添加/列表",
             "搜索用户/空关键词搜索",
-            "通知列表/未读数/同步通知",
-            "聊天会话列表/发送消息",
+            "通知列表/未读数/同步通知/标记已读/全部已读",
+            "聊天会话列表/发送消息/对话记录/标记已读/未读数",
             "隐私设置更新",
+        ]
+    },
+    "test_api_file.py": {
+        "模块": "文件上传/杂项模块",
+        "测试内容": [
+            "头像上传/封面上传",
+            "无文件上传验证",
+            "测试数据生成",
+            "测试资源URL获取",
         ]
     },
     "test_api_admin.py": {
         "模块": "管理员模块",
         "测试内容": [
-            "用户管理: 列表/搜索/添加/更新/重置密码",
+            "用户管理: 列表/搜索/添加/更新/删除/重置密码/修改密码",
             "弱密码创建用户被拒绝",
-            "动漫管理: 列表/搜索/添加",
-            "论坛管理: 帖子列表/搜索/评论列表",
-            "已删除记录: 用户/动漫",
+            "动漫管理: 列表/搜索/添加/更新/删除/切换状态",
+            "论坛管理: 帖子列表/搜索/排序/更新/删除/评论/评论更新/评论删除",
+            "已删除记录: 用户/动漫/集数",
+            "恢复记录: 用户/动漫/集数",
+            "彻底删除: 用户/动漫/集数",
             "未授权访问: 无Token/普通用户Token",
         ]
     },
@@ -108,6 +126,278 @@ def print_test_list():
     print("    python run_tests.py --mode all      # 运行全部测试")
     print("    pytest test_api_auth.py -v          # 只测认证模块")
     print("=" * 70)
+
+
+def html_escape(text):
+    """HTML 转义"""
+    if not text:
+        return ""
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
+
+def parse_junit_xml(xml_path):
+    """解析 JUnit XML 测试结果"""
+    test_results = []
+    if not os.path.exists(xml_path):
+        return test_results
+
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+
+        for testsuite in root.findall("testsuite"):
+            suite_name = testsuite.get("name", "")
+            for testcase in testsuite.findall("testcase"):
+                classname = testcase.get("classname", "")
+                name = testcase.get("name", "")
+                time = testcase.get("time", "0")
+
+                entry = {
+                    "suite": suite_name,
+                    "classname": classname,
+                    "name": name,
+                    "time": time,
+                    "status": "passed",
+                    "message": "",
+                    "traceback": "",
+                }
+
+                failure = testcase.find("failure")
+                error = testcase.find("error")
+                skipped = testcase.find("skipped")
+
+                if failure is not None:
+                    msg = failure.get("message", "")
+                    tb = failure.text or ""
+                    entry["status"] = "failed"
+                    entry["message"] = msg
+                    entry["traceback"] = tb
+                elif error is not None:
+                    msg = error.get("message", "")
+                    tb = error.text or ""
+                    entry["status"] = "error"
+                    entry["message"] = msg
+                    entry["traceback"] = tb
+                elif skipped is not None:
+                    msg = skipped.get("message", "")
+                    entry["status"] = "skipped"
+                    entry["message"] = msg
+
+                test_results.append(entry)
+    except ET.ParseError as e:
+        print(f"[WARN] 无法解析 JUnit XML: {e}")
+    except Exception as e:
+        print(f"[WARN] 解析测试结果时出错: {e}")
+
+    return test_results
+
+
+def generate_detailed_html_report(test_results, output_path):
+    """
+    生成可展开查看错误详情的 HTML 测试报告
+    点击失败/错误行可展开查看完整错误信息和 traceback
+    """
+    total = len(test_results)
+    passed = sum(1 for t in test_results if t["status"] == "passed")
+    failed = sum(1 for t in test_results if t["status"] == "failed")
+    errors = sum(1 for t in test_results if t["status"] == "error")
+    skipped = sum(1 for t in test_results if t["status"] == "skipped")
+    pass_rate = round(passed / total * 100, 1) if total > 0 else 0
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 生成测试用例行
+    test_rows = []
+    for i, t in enumerate(test_results):
+        status_cn = {"passed": "通过", "failed": "失败", "error": "错误", "skipped": "跳过"}
+        status = t["status"]
+        msg = t["message"]
+        tb = t["traceback"]
+
+        msg_short = msg[:200] + "..." if len(msg) > 200 else msg
+
+        if status in ("failed", "error"):
+            detail_html = f"""
+            <tr class="detail-row" id="detail-{i}">
+                <td colspan="4">
+                    <div class="error-detail">
+                        <div class="error-message"><strong>错误信息:</strong> {html_escape(msg)}</div>
+                        <pre class="traceback">{html_escape(tb)}</pre>
+                    </div>
+                </td>
+            </tr>"""
+        else:
+            detail_html = ""
+
+        row = f"""
+        <tr class="test-row status-{status}" onclick="toggleDetail({i})">
+            <td class="status-col"><span class="badge badge-{status}">{status_cn.get(status, status)}</span></td>
+            <td class="name-col">{html_escape(t['name'])}</td>
+            <td class="class-col">{html_escape(t['classname'])}</td>
+            <td class="msg-col">{html_escape(msg_short) if msg else '-'}</td>
+        </tr>
+        {detail_html}"""
+        test_rows.append(row)
+
+    html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Niko动漫 - 测试报告</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; color: #333; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 40px; }}
+        .header h1 {{ font-size: 24px; margin-bottom: 8px; }}
+        .header .time {{ font-size: 13px; opacity: 0.85; }}
+        .summary {{ display: flex; gap: 20px; padding: 24px 40px; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+        .summary-card {{ flex: 1; text-align: center; padding: 16px; border-radius: 8px; background: #f8f9fa; }}
+        .summary-card .num {{ font-size: 32px; font-weight: 700; }}
+        .summary-card .label {{ font-size: 13px; color: #666; margin-top: 4px; }}
+        .summary-card.passed .num {{ color: #27ae60; }}
+        .summary-card.failed .num {{ color: #e74c3c; }}
+        .summary-card.error .num {{ color: #e67e22; }}
+        .summary-card.skipped .num {{ color: #95a5a6; }}
+        .summary-card.rate .num {{ color: #667eea; }}
+        .container {{ max-width: 1200px; margin: 24px auto; padding: 0 20px; }}
+        table {{ width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+        thead {{ background: #f8f9fa; }}
+        th {{ padding: 12px 16px; text-align: left; font-size: 13px; color: #666; font-weight: 600; border-bottom: 2px solid #e9ecef; }}
+        td {{ padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }}
+        .test-row {{ cursor: pointer; transition: background 0.15s; }}
+        .test-row:hover {{ background: #f8f9ff; }}
+        .status-failed {{ background: #fff5f5; }}
+        .status-failed:hover {{ background: #ffe8e8; }}
+        .status-error {{ background: #fff8f0; }}
+        .status-error:hover {{ background: #fff0e0; }}
+        .badge {{ display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }}
+        .badge-passed {{ background: #e8f5e9; color: #27ae60; }}
+        .badge-failed {{ background: #ffebee; color: #e74c3c; }}
+        .badge-error {{ background: #fff3e0; color: #e67e22; }}
+        .badge-skipped {{ background: #f0f0f0; color: #95a5a6; }}
+        .status-col {{ width: 70px; }}
+        .name-col {{ max-width: 350px; word-break: break-all; }}
+        .class-col {{ max-width: 250px; color: #888; font-size: 13px; }}
+        .msg-col {{ max-width: 300px; color: #999; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+        .detail-row {{ display: none; }}
+        .detail-row.show {{ display: table-row; }}
+        .detail-row td {{ padding: 0; }}
+        .error-detail {{ padding: 16px 24px; background: #fff5f5; border-left: 3px solid #e74c3c; }}
+        .error-message {{ color: #c0392b; font-size: 14px; margin-bottom: 12px; line-height: 1.6; }}
+        .traceback {{ background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 6px; font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; }}
+        .filter-bar {{ display: flex; gap: 8px; margin-bottom: 16px; }}
+        .filter-btn {{ padding: 6px 16px; border: 1px solid #ddd; border-radius: 20px; background: white; cursor: pointer; font-size: 13px; transition: all 0.2s; }}
+        .filter-btn:hover {{ border-color: #667eea; color: #667eea; }}
+        .filter-btn.active {{ background: #667eea; color: white; border-color: #667eea; }}
+        .footer {{ text-align: center; padding: 20px; color: #999; font-size: 12px; }}
+        .click-hint {{ font-size: 12px; color: #999; margin-bottom: 12px; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Niko动漫 - 自动化测试报告</h1>
+        <div class="time">生成时间: {now}</div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-card passed">
+            <div class="num">{passed}</div>
+            <div class="label">通过</div>
+        </div>
+        <div class="summary-card failed">
+            <div class="num">{failed}</div>
+            <div class="label">失败</div>
+        </div>
+        <div class="summary-card error">
+            <div class="num">{errors}</div>
+            <div class="label">错误</div>
+        </div>
+        <div class="summary-card skipped">
+            <div class="num">{skipped}</div>
+            <div class="label">跳过</div>
+        </div>
+        <div class="summary-card rate">
+            <div class="num">{pass_rate}%</div>
+            <div class="label">通过率</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="click-hint">点击失败/错误的行可以展开查看详细错误信息和 traceback</div>
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterTests('all')">全部 ({total})</button>
+            <button class="filter-btn" onclick="filterTests('passed')">通过 ({passed})</button>
+            <button class="filter-btn" onclick="filterTests('failed')">失败 ({failed})</button>
+            <button class="filter-btn" onclick="filterTests('error')">错误 ({errors})</button>
+            <button class="filter-btn" onclick="filterTests('skipped')">跳过 ({skipped})</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>状态</th>
+                    <th>测试用例</th>
+                    <th>所属类</th>
+                    <th>备注</th>
+                </tr>
+            </thead>
+            <tbody>
+                {''.join(test_rows)}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">Niko动漫 自动化测试报告 · Powered by pytest</div>
+
+    <script>
+        function toggleDetail(idx) {{
+            var row = document.getElementById('detail-' + idx);
+            if (row) {{
+                row.classList.toggle('show');
+            }}
+        }}
+        function filterTests(status) {{
+            document.querySelectorAll('.filter-btn').forEach(function(btn) {{
+                btn.classList.remove('active');
+            }});
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.test-row').forEach(function(row) {{
+                if (status === 'all') {{
+                    row.style.display = '';
+                }} else if (row.classList.contains('status-' + status)) {{
+                    row.style.display = '';
+                }} else {{
+                    row.style.display = 'none';
+                }}
+            }});
+            // 隐藏所有展开的详情行
+            document.querySelectorAll('.detail-row').forEach(function(row) {{
+                row.classList.remove('show');
+            }});
+        }}
+        // 默认展开所有失败和错误的详情
+        window.addEventListener('load', function() {{
+            document.querySelectorAll('.test-row.status-failed, .test-row.status-error').forEach(function(row) {{
+                row.click();
+            }});
+        }});
+    </script>
+</body>
+</html>"""
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    return output_path
 
 
 def parse_pytest_output(output: str) -> dict:
@@ -196,13 +486,15 @@ def print_summary(results: dict, output: str):
 
 
 def run_pytest(test_files, report=False, parallel=False, extra_args=None):
-    """运行 pytest 并解析输出"""
-    cmd = ["pytest"] + test_files + ["-v", "--tb=long", "--color=yes"]
+    """运行 pytest 并解析输出，当 report=True 时自动生成详细 HTML 报告"""
+    # 使用 sys.executable -m pytest 确保能找到 pytest
+    cmd = [sys.executable, "-m", "pytest"] + test_files + ["-v", "--tb=long", "--color=yes"]
+    junit_xml_path = None
     if report:
         os.makedirs("reports", exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_path = f"reports/report_{timestamp}.html"
-        cmd.extend([f"--html={report_path}", "--self-contained-html"])
+        junit_xml_path = f"reports/results_{timestamp}.xml"
+        cmd.extend([f"--junitxml={junit_xml_path}"])
     if parallel:
         cmd.extend(["-n", "auto"])
     if extra_args:
@@ -222,8 +514,21 @@ def run_pytest(test_files, report=False, parallel=False, extra_args=None):
     results = parse_pytest_output(result.stdout)
     print_summary(results, result.stdout)
 
-    if report:
-        print(f"\n[报告] HTML 报告已保存到: {os.path.abspath(report_path)}")
+    # 生成详细 HTML 报告（可展开查看错误详情）
+    if report and junit_xml_path and os.path.exists(junit_xml_path):
+        test_results = parse_junit_xml(junit_xml_path)
+        if test_results:
+            report_path = junit_xml_path.replace(".xml", ".html")
+            path = generate_detailed_html_report(test_results, report_path)
+            abs_path = os.path.abspath(path)
+            print(f"\n{'=' * 60}")
+            print(f"  HTML 详细报告已生成!")
+            print(f"  路径: {abs_path}")
+            print(f"  在浏览器中打开: file:///{abs_path.replace(chr(92), '/')}")
+            print(f"  点击失败/错误行可展开查看完整错误详情")
+            print(f"{'=' * 60}")
+        else:
+            print(f"\n[WARN] JUnit XML 解析结果为空，跳过 HTML 报告生成")
 
     return result.returncode
 
@@ -232,7 +537,7 @@ def run_api_tests(report=False, parallel=False):
     """运行 API 测试"""
     files = ["test_api_auth.py", "test_api_anime.py",
              "test_api_forum.py", "test_api_user.py",
-             "test_api_admin.py"]
+             "test_api_file.py", "test_api_admin.py"]
     return run_pytest(files, report=report, parallel=parallel)
 
 

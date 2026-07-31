@@ -56,8 +56,8 @@ class TestAuthorizationBypass:
     def test_user_modify_other_user(self, base_url, auth_headers):
         """测试: 普通用户尝试修改其他用户资料"""
         resp = api_post("/api/user/update", headers=auth_headers, json_data={
-            "oldUsername": "admin",
-            "username": "admin_hacked",
+            "oldUsername": "other_user_999",
+            "username": "hacked_name",
             "email": "hack@test.com"
         })
         data = resp.json()

@@ -90,7 +90,7 @@ class TestPageLoads:
         page.goto(f"{FRONTEND_URL}/auth")
         page.wait_for_load_state("networkidle")
         page.fill('input[placeholder*="用户名"]', "testuser")
-        page.fill('input[type="password"]', "Test1234")
+        page.fill('input[type="password"]', "Test@1234")
         page.click('button:has-text("登录")')
         page.wait_for_timeout(2000)
 
@@ -135,7 +135,7 @@ class TestNavigation:
         page.goto(f"{FRONTEND_URL}/auth")
         page.wait_for_load_state("networkidle")
         page.fill('input[placeholder*="用户名"]', "testuser")
-        page.fill('input[type="password"]', "Test1234")
+        page.fill('input[type="password"]', "Test@1234")
         page.click('button:has-text("登录")')
         page.wait_for_timeout(2000)
         page.goto(f"{FRONTEND_URL}{path}")
@@ -154,7 +154,7 @@ class TestLoginFlow:
         page.goto(f"{FRONTEND_URL}/auth")
         page.wait_for_load_state("networkidle")
         page.fill('input[placeholder*="用户名"]', "testuser")
-        page.fill('input[type="password"]', "Test1234")
+        page.fill('input[type="password"]', "Test@1234")
         page.click('button:has-text("登录")')
         page.wait_for_timeout(2000)
         # 登录成功后应跳转到首页
@@ -177,8 +177,8 @@ class TestLoginFlow:
         page.wait_for_load_state("networkidle")
         page.click('text=注册')
         page.wait_for_timeout(500)
-        # 注册表单应可见
-        assert page.locator('input[placeholder*="邮箱"]').is_visible()
+        # 注册表单应可见（确认密码输入框出现即为注册模式）
+        assert page.locator('input[placeholder*="再次输入密码"]').is_visible()
 
 
 # ============================================================
@@ -217,7 +217,7 @@ class TestUserSearch:
         page.goto(f"{FRONTEND_URL}/auth")
         page.wait_for_load_state("networkidle")
         page.fill('input[placeholder*="用户名"]', "testuser")
-        page.fill('input[type="password"]', "Test1234")
+        page.fill('input[type="password"]', "Test@1234")
         page.click('button:has-text("登录")')
         page.wait_for_timeout(2000)
 
@@ -248,7 +248,7 @@ class TestAnimeDetail:
         page.goto(f"{FRONTEND_URL}/auth")
         page.wait_for_load_state("networkidle")
         page.fill('input[placeholder*="用户名"]', "testuser")
-        page.fill('input[type="password"]', "Test1234")
+        page.fill('input[type="password"]', "Test@1234")
         page.click('button:has-text("登录")')
         page.wait_for_timeout(2000)
 
@@ -284,6 +284,6 @@ class TestUserHome:
         page.goto(f"{FRONTEND_URL}/auth")
         page.wait_for_load_state("networkidle")
         page.fill('input[placeholder*="用户名"]', "testuser")
-        page.fill('input[type="password"]', "Test1234")
+        page.fill('input[type="password"]', "Test@1234")
         page.click('button:has-text("登录")')
         page.wait_for_timeout(2000)

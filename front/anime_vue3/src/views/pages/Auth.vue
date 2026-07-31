@@ -30,7 +30,7 @@
               @input="validatePassword"
               :class="{ 'error': passwordError }"
               :autocomplete="isLogin ? 'current-password' : 'new-password'"
-              placeholder="请输入密码（8-20个字符，需含大小写字母和数字中至少两种）"
+              placeholder="请输入密码（8-20位，含大小写字母和数字）"
             />
             <button type="button" class="toggle-password" @click="showPassword = !showPassword">
               {{ showPassword ? '隐藏' : '显示' }}

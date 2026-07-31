@@ -49,7 +49,7 @@ class TestAdminUserManagement:
         data = resp.json()
         assert data["code"] != 200
 
-    def test_update_user(self, base_url, admin_headers):
+    def test_update_user(self, base_url, admin_headers, user_token):
         """测试: 更新用户信息"""
         resp = api_post("/api/admin/users", headers=admin_headers, json_data={
             "page": 1, "size": 100
@@ -72,7 +72,7 @@ class TestAdminUserManagement:
         data = resp.json()
         assert data["code"] == 200
 
-    def test_reset_password(self, base_url, admin_headers):
+    def test_reset_password(self, base_url, admin_headers, user_token):
         """测试: 重置用户密码"""
         resp = api_post("/api/admin/users", headers=admin_headers, json_data={
             "page": 1, "size": 100
@@ -93,7 +93,7 @@ class TestAdminUserManagement:
         # 200成功，500可能密码加密问题
         assert data["code"] in (200, 500)
 
-    def test_update_password(self, base_url, admin_headers):
+    def test_update_password(self, base_url, admin_headers, user_token):
         """测试: 管理员修改用户密码"""
         resp = api_post("/api/admin/users", headers=admin_headers, json_data={
             "page": 1, "size": 100

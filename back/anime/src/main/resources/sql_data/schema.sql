@@ -224,6 +224,7 @@ CREATE TABLE chat_messages (
     content TEXT NOT NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     create_time DATETIME NOT NULL,
+    is_test BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (sender_id) REFERENCES users(id),
     FOREIGN KEY (receiver_id) REFERENCES users(id),
     INDEX idx_sender_receiver (sender_id, receiver_id),

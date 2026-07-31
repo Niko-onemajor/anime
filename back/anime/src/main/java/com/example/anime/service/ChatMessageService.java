@@ -25,12 +25,21 @@ public class ChatMessageService {
     }
 
     public List<ChatMessage> getConversation(Long userId1, Long userId2) {
-        return chatMessageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByCreateTimeAsc(
+        List<ChatMessage> messages = chatMessageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByCreateTimeAsc(
                 userId1, userId2, userId1, userId2);
+        // 非管理员过滤测试消息
+        if (!SecurityUtils.isCurrentUserAdmin()) {
+            messages.removeIf(msg -> Boolean.TRUE.equals(msg.getIsTest()));
+        }
+        return messages;
     }
 
     public List<Map<String, Object>> getConversationList(Long userId) {
         List<ChatMessage> messages = chatMessageRepository.findBySenderIdOrReceiverIdOrderByCreateTimeDesc(userId, userId);
+        // 非管理员过滤测试消息
+        if (!SecurityUtils.isCurrentUserAdmin()) {
+            messages.removeIf(msg -> Boolean.TRUE.equals(msg.getIsTest()));
+        }
         Map<Long, Map<String, Object>> conversationMap = new LinkedHashMap<>();
 
         for (ChatMessage msg : messages) {
@@ -85,6 +94,11 @@ public class ChatMessageService {
     }
 
     public long getUnreadCount(Long userId) {
-        return chatMessageRepository.countByReceiverIdAndIsReadFalse(userId);
+        List<ChatMessage> unreadMessages = chatMessageRepository.findByReceiverIdAndIsReadFalse(userId);
+        // 非管理员过滤测试消息
+        if (!SecurityUtils.isCurrentUserAdmin()) {
+            unreadMessages.removeIf(msg -> Boolean.TRUE.equals(msg.getIsTest()));
+        }
+        return unreadMessages.size();
     }
 }

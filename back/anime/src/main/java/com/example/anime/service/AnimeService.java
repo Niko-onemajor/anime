@@ -5,6 +5,7 @@ import com.example.anime.model.Episode;
 import com.example.anime.model.WatchHistory;
 import com.example.anime.repository.AnimeRepository;
 import com.example.anime.repository.WatchHistoryRepository;
+import com.example.anime.utils.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -39,47 +40,65 @@ public class AnimeService {
     @Autowired
     private AnimeCommentService animeCommentService;
 
-    // 获取所有动漫（只返回上架状态且非删除、非测试）
+    // 获取所有动漫（只返回上架状态且非删除，管理员可看测试数据）
     public List<Anime> getAllAnimes() {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.findByStatusAndDeletedFalse(1);
+        }
         return animeRepository.findByStatusAndDeletedFalseAndIsTestFalse(1);
     }
 
-    // 分页获取动漫（上架且非删除、非测试）
+    // 分页获取动漫（上架且非删除，管理员可看测试数据）
     public Page<Anime> getAllAnimesPaginated(int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size);
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.findByStatusAndDeletedFalse(1, pageable);
+        }
         return animeRepository.findByStatusAndDeletedFalseAndIsTestFalse(1, pageable);
     }
 
-    // 根据ID获取动漫（非删除、非测试）
+    // 根据ID获取动漫（管理员可看测试数据）
     public Anime getAnimeById(Long id) {
         Anime anime = animeRepository.findByIdAndDeletedFalse(id);
-        if (anime != null && Boolean.TRUE.equals(anime.getIsTest())) {
+        if (anime != null && !SecurityUtils.isCurrentUserAdmin() && Boolean.TRUE.equals(anime.getIsTest())) {
             return null;
         }
         return anime;
     }
 
-    // 根据年份获取动漫（非删除、非测试）
+    // 根据年份获取动漫（管理员可看测试数据）
     public List<Anime> getAnimesByYear(String year) {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.findByYearAndDeletedFalse(year);
+        }
         return animeRepository.findByYearAndDeletedFalseAndIsTestFalse(year);
     }
 
-    // 根据首字母获取动漫（非删除、非测试）
+    // 根据首字母获取动漫（管理员可看测试数据）
     public List<Anime> getAnimesByLetter(String letter) {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.findByLetterAndDeletedFalse(letter);
+        }
         return animeRepository.findByLetterAndDeletedFalseAndIsTestFalse(letter);
     }
 
-    // 根据关键字搜索动漫（非删除、非测试）
+    // 根据关键字搜索动漫（管理员可看测试数据）
     public List<Anime> searchAnimes(String keyword) {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.searchByKeywordAdmin(keyword);
+        }
         return animeRepository.searchByKeyword(keyword);
     }
 
-    // 按评分排序获取动漫（非删除、非测试）
+    // 按评分排序获取动漫（管理员可看测试数据）
     public List<Anime> getAnimesByRating() {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.findByDeletedFalseOrderByRatingDesc();
+        }
         return animeRepository.findByDeletedFalseAndIsTestFalseOrderByRatingDesc();
     }
 
-    // 按观看次数排序获取热门动漫（非删除）
+    // 按观看次数排序获取热门动漫（非删除，管理员可看测试数据）
     public List<Map<String, Object>> getPopularAnimesByWatchCount() {
         return getRankingByTimeRange(null);
     }
@@ -130,10 +149,12 @@ public class AnimeService {
 
         // 按观看次数降序排序，观看次数相同时按评分降序排序
         List<Map.Entry<Long, Integer>> sortedEntries = animeWatchCount.entrySet().stream()
-                // 过滤掉被删除的动漫和测试动漫
+                // 过滤掉被删除的动漫，管理员可看测试数据
                 .filter(entry -> {
                     Anime anime = animeRepository.findByIdAndDeletedFalse(entry.getKey());
-                    return anime != null && !Boolean.TRUE.equals(anime.getIsTest());
+                    if (anime == null) return false;
+                    if (SecurityUtils.isCurrentUserAdmin()) return true;
+                    return !Boolean.TRUE.equals(anime.getIsTest());
                 })
                 .sorted((entry1, entry2) -> {
                     // 首先按观看次数降序排序
@@ -166,7 +187,7 @@ public class AnimeService {
             Optional<Anime> animeOptional = animeRepository.findById(entry.getKey());
             if (animeOptional.isPresent()) {
                 Anime anime = animeOptional.get();
-                if (!anime.getDeleted() && !Boolean.TRUE.equals(anime.getIsTest())) {
+                if (!anime.getDeleted() && (SecurityUtils.isCurrentUserAdmin() || !Boolean.TRUE.equals(anime.getIsTest()))) {
                     Map<String, Object> animeWithCount = new HashMap<>();
                     animeWithCount.put("id", anime.getId());
                     animeWithCount.put("title", anime.getTitle());
@@ -183,7 +204,12 @@ public class AnimeService {
 
         // 如果热门动漫不足5个，补充其他动漫
         if (popularAnimes.size() < 5) {
-            List<Anime> allAnime = animeRepository.findByDeletedFalseAndIsTestFalse();
+            List<Anime> allAnime;
+            if (SecurityUtils.isCurrentUserAdmin()) {
+                allAnime = animeRepository.findByDeletedFalse();
+            } else {
+                allAnime = animeRepository.findByDeletedFalseAndIsTestFalse();
+            }
             Set<Long> popularAnimeIds = sortedEntries.stream()
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toSet());
@@ -230,8 +256,11 @@ public class AnimeService {
         return countMap;
     }
 
-    // 按年份排序获取动漫（非删除、非测试）
+    // 按年份排序获取动漫（管理员可看测试数据）
     public List<Anime> getAnimesByYear() {
+        if (SecurityUtils.isCurrentUserAdmin()) {
+            return animeRepository.findByDeletedFalseOrderByYearDesc();
+        }
         return animeRepository.findByDeletedFalseAndIsTestFalseOrderByYearDesc();
     }
 

@@ -29,23 +29,44 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> {
     @Query("SELECT a FROM Anime a WHERE a.title LIKE %:keyword% AND (a.deleted IS NULL OR a.deleted = false)")
     List<Anime> searchByKeywordAdmin(@Param("keyword") String keyword);
     
-    // 按评分排序（非删除、非测试）
+    // 按评分排序（非删除、非测试，NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false) ORDER BY a.rating DESC")
     List<Anime> findByDeletedFalseAndIsTestFalseOrderByRatingDesc();
     
-    // 按年份排序（非删除、非测试）
+    // 按年份排序（非删除、非测试，NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false) ORDER BY a.year DESC")
     List<Anime> findByDeletedFalseAndIsTestFalseOrderByYearDesc();
     
-    // 根据状态查询（非删除、非测试）
-    List<Anime> findByStatusAndDeletedFalseAndIsTestFalse(int status);
+    // 根据状态查询（非删除、非测试，NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE a.status = :status AND (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false)")
+    List<Anime> findByStatusAndDeletedFalseAndIsTestFalse(@Param("status") int status);
     
-    // 根据状态分页查询（上架且未删除、非测试）
-    Page<Anime> findByStatusAndDeletedFalseAndIsTestFalse(int status, Pageable pageable);
+    // 根据状态分页查询（上架且未删除、非测试，NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE a.status = :status AND (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false)")
+    Page<Anime> findByStatusAndDeletedFalseAndIsTestFalse(@Param("status") int status, Pageable pageable);
     
-    // 查询所有未删除的非测试动漫（用户端）
+    // 查询所有未删除的非测试动漫（用户端，NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false)")
     List<Anime> findByDeletedFalseAndIsTestFalse();
     
     // 查询所有未删除的动漫（管理员端，不过滤测试数据）
     List<Anime> findByDeletedFalse();
+    
+    // 根据状态查询未删除的动漫（管理员端，不过滤测试数据）
+    @Query("SELECT a FROM Anime a WHERE a.status = :status AND (a.deleted IS NULL OR a.deleted = false)")
+    List<Anime> findByStatusAndDeletedFalse(@Param("status") int status);
+    
+    // 根据状态分页查询未删除的动漫（管理员端，不过滤测试数据）
+    @Query("SELECT a FROM Anime a WHERE a.status = :status AND (a.deleted IS NULL OR a.deleted = false)")
+    Page<Anime> findByStatusAndDeletedFalse(@Param("status") int status, Pageable pageable);
+    
+    // 按评分排序查询未删除的动漫（管理员端，不过滤测试数据）
+    @Query("SELECT a FROM Anime a WHERE (a.deleted IS NULL OR a.deleted = false) ORDER BY a.rating DESC")
+    List<Anime> findByDeletedFalseOrderByRatingDesc();
+    
+    // 按年份排序查询未删除的动漫（管理员端，不过滤测试数据）
+    @Query("SELECT a FROM Anime a WHERE (a.deleted IS NULL OR a.deleted = false) ORDER BY a.year DESC")
+    List<Anime> findByDeletedFalseOrderByYearDesc();
     
     // 查询所有已删除的动漫
     List<Anime> findByDeletedTrue();
@@ -53,9 +74,11 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> {
     // 根据ID查询未删除的动漫
     Anime findByIdAndDeletedFalse(Long id);
     
-    // 根据年份查询未删除的非测试动漫
-    List<Anime> findByYearAndDeletedFalseAndIsTestFalse(String year);
+    // 根据年份查询未删除的非测试动漫（NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE a.year = :year AND (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false)")
+    List<Anime> findByYearAndDeletedFalseAndIsTestFalse(@Param("year") String year);
     
-    // 根据首字母查询未删除的非测试动漫
-    List<Anime> findByLetterAndDeletedFalseAndIsTestFalse(String letter);
+    // 根据首字母查询未删除的非测试动漫（NULL视为非测试）
+    @Query("SELECT a FROM Anime a WHERE a.letter = :letter AND (a.deleted IS NULL OR a.deleted = false) AND (a.isTest IS NULL OR a.isTest = false)")
+    List<Anime> findByLetterAndDeletedFalseAndIsTestFalse(@Param("letter") String letter);
 }

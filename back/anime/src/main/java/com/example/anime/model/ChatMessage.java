@@ -25,6 +25,9 @@ public class ChatMessage {
     @Column(name = "create_time", nullable = false)
     private Date createTime;
 
+    @Column(name = "is_test", nullable = false)
+    private Boolean isTest = false;
+
     public ChatMessage() {
     }
 
@@ -82,5 +85,13 @@ public class ChatMessage {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
+    }
+
+    public Boolean getIsTest() {
+        return isTest;
+    }
+
+    public void setIsTest(Boolean isTest) {
+        this.isTest = isTest;
     }
 }

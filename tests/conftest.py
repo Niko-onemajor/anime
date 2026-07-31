@@ -15,6 +15,102 @@ TEST_PASSWORD = "Test1234"
 # 测试报告输出目录
 REPORT_DIR = os.path.join(os.path.dirname(__file__), "reports")
 
+# 用于终端报告钩子
+_terminal = None
+
+
+# ============================================================
+# pytest 钩子: 在测试结束时打印详细摘要
+# ============================================================
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """测试结束后打印详细失败摘要"""
+    global _terminal
+    _terminal = terminalreporter
+
+    # 统计
+    stats = terminalreporter.stats
+    passed = len(stats.get('passed', []))
+    failed = len(stats.get('failed', []))
+    skipped = len(stats.get('skipped', []))
+    error = len(stats.get('error', []))
+
+    total = passed + failed + skipped + error
+    if total == 0:
+        return
+
+    terminalreporter.write_sep("=", "测试结果摘要")
+    terminalreporter.write_line(
+        f"总计: {total}  |  "
+        f"通过: {passed}  |  "
+        f"失败: {failed}  |  "
+        f"跳过: {skipped}  |  "
+        f"错误: {error}"
+    )
+
+    if failed > 0:
+        terminalreporter.write_sep("-", "失败用例详情")
+        for report in stats.get('failed', []):
+            test_name = report.nodeid
+            # 提取失败原因
+            longrepr = str(report.longrepr) if report.longrepr else ""
+            # 提取 AssertionError 或关键错误行
+            error_lines = []
+            for line in longrepr.split('\n'):
+                line = line.strip()
+                if 'AssertionError' in line or 'assert ' in line:
+                    error_lines.append(line)
+                elif 'E   ' in line and ('Error' in line or 'assert' in line):
+                    error_lines.append(line.replace('E   ', ''))
+
+            reason = error_lines[0] if error_lines else longrepr[:200]
+            terminalreporter.write_line(f"  X  {test_name}")
+            terminalreporter.write_line(f"     原因: {reason}")
+
+    if error > 0:
+        terminalreporter.write_sep("-", "错误用例详情")
+        for report in stats.get('error', []):
+            terminalreporter.write_line(f"  !! {report.nodeid}")
+            longrepr = str(report.longrepr) if report.longrepr else ""
+            # 提取第一行错误
+            first_line = longrepr.split('\n')[0] if longrepr else ""
+            terminalreporter.write_line(f"     原因: {first_line}")
+
+
+def pytest_collection_modifyitems(config, items):
+    """为每个测试用例添加中文标记"""
+    # 测试类名 → 中文描述映射
+    DESC_MAP = {
+        "TestAuth": "认证模块",
+        "TestToken": "Token管理",
+        "TestAnimeList": "动漫列表",
+        "TestAnimeDetail": "动漫详情",
+        "TestAnimeRanking": "排行榜",
+        "TestAnimeFilter": "动漫筛选",
+        "TestAnimeComment": "动漫评论",
+        "TestForumPost": "论坛帖子",
+        "TestForumComment": "论坛评论",
+        "TestFollow": "关注功能",
+        "TestFavorite": "收藏功能",
+        "TestRating": "评分功能",
+        "TestWatchHistory": "观看记录",
+        "TestUserSearch": "用户搜索",
+        "TestNotification": "通知功能",
+        "TestChat": "聊天功能",
+        "TestPrivacy": "隐私设置",
+        "TestAdminUserManagement": "管理员-用户管理",
+        "TestAdminAnimeManagement": "管理员-动漫管理",
+        "TestAdminForumManagement": "管理员-论坛管理",
+        "TestAdminDeletedRecords": "管理员-删除记录",
+        "TestAdminUnauthorizedAccess": "管理员-权限控制",
+        "TestPageLoads": "页面加载",
+        "TestNavigation": "页面导航",
+        "TestLoginFlow": "登录流程",
+        "TestUserSearch": "用户搜索",
+        "TestAnimeDetail": "动漫详情页",
+        "TestUserHome": "用户主页",
+    }
+
 
 # ============================================================
 # 全局 Session Fixtures

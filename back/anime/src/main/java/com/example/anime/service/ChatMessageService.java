@@ -21,6 +21,15 @@ public class ChatMessageService {
 
     public ChatMessage sendMessage(Long senderId, Long receiverId, String content) {
         ChatMessage message = new ChatMessage(senderId, receiverId, content);
+        // 测试用户发送或接收的消息自动标记为测试数据
+        User sender = userRepository.findByIdAndDeletedFalse(senderId);
+        User receiver = userRepository.findByIdAndDeletedFalse(receiverId);
+        User currentUser = SecurityUtils.getCurrentUser();
+        if ((sender != null && Boolean.TRUE.equals(sender.getIsTest()))
+                || (receiver != null && Boolean.TRUE.equals(receiver.getIsTest()))
+                || (currentUser != null && Boolean.TRUE.equals(currentUser.getIsTest()))) {
+            message.setIsTest(true);
+        }
         return chatMessageRepository.save(message);
     }
 

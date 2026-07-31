@@ -127,6 +127,14 @@ public class UserController {
         String region = request.get("region");
         String signature = request.get("signature");
 
+        // 权限检查：只能修改自己的资料
+        User currentUser = SecurityUtils.getCurrentUser();
+        if (currentUser == null || !currentUser.getUsername().equals(oldUsername)) {
+            response.put("code", 403);
+            response.put("msg", "无权修改其他用户的资料");
+            return response;
+        }
+
         try {
             // 更新用户资料
             User user = userService.update(oldUsername, newUsername, email, birthday, favorite, gender, region, signature);

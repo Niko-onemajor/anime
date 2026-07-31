@@ -164,9 +164,13 @@ public class UserService {
             }
         }
 
-        // 更新用户资料
-        user.setUsername(newUsername);
-        user.setEmail(email);
+        // 更新用户资料（HTML转义防XSS）
+        user.setUsername(escapeHtml(newUsername));
+        user.setEmail(escapeHtml(email));
+        // 修复空role问题
+        if (user.getRole() == null || user.getRole().isEmpty()) {
+            user.setRole("user");
+        }
         if (birthday != null && !birthday.isEmpty()) {
             try {
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
@@ -175,10 +179,10 @@ public class UserService {
                 e.printStackTrace();
             }
         }
-        user.setFavorite(favorite);
-        user.setGender(gender);
-        user.setRegion(region);
-        user.setSignature(signature);
+        user.setFavorite(escapeHtml(favorite));
+        user.setGender(escapeHtml(gender));
+        user.setRegion(escapeHtml(region));
+        user.setSignature(escapeHtml(signature));
 
         User savedUser = userRepository.save(user);
         log.debug("保存结果: " + savedUser.getUsername());
@@ -202,6 +206,17 @@ public class UserService {
     // 保存用户
     public User save(User user) {
         return userRepository.save(user);
+    }
+
+    // HTML转义防XSS
+    private String escapeHtml(String input) {
+        if (input == null) return null;
+        return input
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     // 根据ID查找用户

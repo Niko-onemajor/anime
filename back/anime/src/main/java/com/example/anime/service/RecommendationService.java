@@ -4,6 +4,7 @@ import com.example.anime.model.Anime;
 import com.example.anime.model.AnimeComment;
 import com.example.anime.model.Favorite;
 import com.example.anime.model.WatchHistory;
+import com.example.anime.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,15 @@ public class RecommendationService {
 
     @Autowired
     private AnimeCommentService animeCommentService;
+
+    // 过滤测试动漫和未上架动漫
+    private List<Anime> filterTestAnimes(List<Anime> animes) {
+        boolean isAdmin = SecurityUtils.isCurrentUserAdmin();
+        return animes.stream()
+                .filter(a -> a.getStatus() != null && a.getStatus() == 1) // 只推荐上架动漫
+                .filter(a -> isAdmin || !Boolean.TRUE.equals(a.getIsTest()))
+                .collect(Collectors.toList());
+    }
 
     // 基于用户多维度数据的推荐
     public List<Anime> getRecommendationsByWatchHistory(Long userId) {
@@ -59,8 +69,8 @@ public class RecommendationService {
         interactedAnimeIds.addAll(favoritedAnimeIds);
         interactedAnimeIds.addAll(commentedAnimeIds);
 
-        // 获取所有动漫
-        List<Anime> allAnime = animeService.findAll();
+        // 获取所有动漫（非管理员过滤测试）
+        List<Anime> allAnime = filterTestAnimes(animeService.findAll());
         
         // 过滤掉用户已经交互过的动漫
         List<Anime> unwatchedAnime = allAnime.stream()
@@ -215,18 +225,19 @@ public class RecommendationService {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
-        // 获取热门动漫
+        // 获取热门动漫，非管理员过滤测试
         List<Anime> popularAnime = new ArrayList<>();
         for (Long animeId : popularAnimeIds) {
             Anime anime = animeService.findById(animeId);
-            if (anime != null) {
+            if (anime != null && anime.getStatus() != null && anime.getStatus() == 1
+                    && (SecurityUtils.isCurrentUserAdmin() || !Boolean.TRUE.equals(anime.getIsTest()))) {
                 popularAnime.add(anime);
             }
         }
 
         // 如果热门动漫不足5个，补充其他动漫
         if (popularAnime.size() < 5) {
-            List<Anime> allAnime = animeService.findAll();
+            List<Anime> allAnime = filterTestAnimes(animeService.findAll());
             Set<Long> popularAnimeIdSet = popularAnimeIds.stream().collect(Collectors.toSet());
             
             // 按评分排序补充
@@ -246,9 +257,9 @@ public class RecommendationService {
             }
         }
 
-        // 如果仍然没有推荐动漫，直接返回所有动漫的前5个
+        // 如果仍然没有推荐动漫，直接返回所有动漫的前5个（已过滤测试）
         if (popularAnime.isEmpty()) {
-            List<Anime> allAnime = animeService.findAll();
+            List<Anime> allAnime = filterTestAnimes(animeService.findAll());
             if (!allAnime.isEmpty()) {
                 if (allAnime.size() > 5) {
                     return allAnime.subList(0, 5);

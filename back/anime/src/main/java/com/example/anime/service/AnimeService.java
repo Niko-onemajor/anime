@@ -149,10 +149,12 @@ public class AnimeService {
 
         // 按观看次数降序排序，观看次数相同时按评分降序排序
         List<Map.Entry<Long, Integer>> sortedEntries = animeWatchCount.entrySet().stream()
-                // 过滤掉被删除的动漫，管理员可看测试数据
+                // 过滤掉被删除、未上架、测试动漫（管理员可看测试数据）
                 .filter(entry -> {
                     Anime anime = animeRepository.findByIdAndDeletedFalse(entry.getKey());
                     if (anime == null) return false;
+                    // 非上架动漫不显示
+                    if (anime.getStatus() == null || anime.getStatus() != 1) return false;
                     if (SecurityUtils.isCurrentUserAdmin()) return true;
                     return !Boolean.TRUE.equals(anime.getIsTest());
                 })
@@ -206,9 +208,9 @@ public class AnimeService {
         if (popularAnimes.size() < 5) {
             List<Anime> allAnime;
             if (SecurityUtils.isCurrentUserAdmin()) {
-                allAnime = animeRepository.findByDeletedFalse();
+                allAnime = animeRepository.findByStatusAndDeletedFalse(1);
             } else {
-                allAnime = animeRepository.findByDeletedFalseAndIsTestFalse();
+                allAnime = animeRepository.findByStatusAndDeletedFalseAndIsTestFalse(1);
             }
             Set<Long> popularAnimeIds = sortedEntries.stream()
                     .map(Map.Entry::getKey)

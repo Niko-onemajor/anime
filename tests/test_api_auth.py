@@ -9,7 +9,7 @@ from conftest import api_post, api_get, assert_code_200, TEST_PASSWORD
 class TestAuth:
     """认证相关测试"""
 
-    def test_login_success(self, base_url):
+    def test_login_success(self, base_url, user_token):
         """测试: 正确账号密码登录成功"""
         resp = api_post("/api/user/login", json_data={
             "username": "testuser",

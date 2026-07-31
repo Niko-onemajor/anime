@@ -36,6 +36,106 @@ _terminal = None
 # pytest 钩子: 在测试结束时打印详细摘要
 # ============================================================
 
+def pytest_sessionfinish(session, exitstatus):
+    """测试全部结束后清理所有测试产生的数据"""
+    print("\n" + "=" * 60)
+    print("  清理测试数据...")
+    print("=" * 60)
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        # 1. 找到测试用户ID
+        cursor.execute("SELECT id FROM users WHERE username = %s", (TEST_USERNAME,))
+        test_user = cursor.fetchone()
+        test_user_ids = []
+        if test_user:
+            test_user_ids.append(test_user[0])
+
+        # 2. 找到admin测试创建的测试用户（排除admin和testuser）
+        cursor.execute(
+            "SELECT id FROM users WHERE username LIKE %s AND username NOT IN (%s, %s)",
+            ("%test%", "admin", TEST_USERNAME)
+        )
+        for row in cursor.fetchall():
+            test_user_ids.append(row[0])
+
+        if test_user_ids:
+            print(f"  找到 {len(test_user_ids)} 个测试用户: {test_user_ids}")
+            p = ','.join(['%s'] * len(test_user_ids))
+            args = tuple(test_user_ids)
+
+            cleanup_steps = [
+                (f"DELETE FROM comment_interactions WHERE user_id IN ({p})", args, "评论互动(用户)"),
+                (f"DELETE FROM comment_interactions WHERE comment_id IN (SELECT id FROM anime_comments WHERE author_id IN ({p}))", args, "动漫评论互动(用户)"),
+                (f"DELETE FROM forum_comment_interactions WHERE user_id IN ({p})", args, "论坛评论互动(用户)"),
+                (f"DELETE FROM forum_comment_interactions WHERE comment_id IN (SELECT id FROM comments WHERE author_id IN ({p}))", args, "论坛评论互动(用户评论)"),
+                (f"DELETE FROM anime_ratings WHERE user_id IN ({p})", args, "动漫评分"),
+                (f"DELETE FROM chat_messages WHERE sender_id IN ({p}) OR receiver_id IN ({p})", args + args, "聊天消息"),
+                (f"DELETE FROM notifications WHERE user_id IN ({p})", args, "通知"),
+                (f"DELETE FROM watch_history WHERE user_id IN ({p})", args, "观看记录"),
+                (f"DELETE FROM favorites WHERE user_id IN ({p})", args, "收藏"),
+                (f"DELETE FROM follows WHERE follower_id IN ({p}) OR followed_id IN ({p})", args + args, "关注"),
+                (f"DELETE FROM anime_comments WHERE author_id IN ({p})", args, "动漫评论"),
+                (f"DELETE FROM comments WHERE author_id IN ({p})", args, "论坛评论"),
+                (f"DELETE FROM posts WHERE author_id IN ({p})", args, "帖子"),
+            ]
+            for sql, params, desc in cleanup_steps:
+                try:
+                    cursor.execute(sql, params)
+                    if cursor.rowcount > 0:
+                        print(f"    删除 {desc}: {cursor.rowcount} 条")
+                except Exception as e:
+                    print(f"    [WARN] 清理 {desc} 失败: {e}")
+
+            # 删除测试用户
+            try:
+                cursor.execute(f"DELETE FROM users WHERE id IN ({p})", args)
+                if cursor.rowcount > 0:
+                    print(f"    删除测试用户: {cursor.rowcount} 个")
+            except Exception as e:
+                print(f"    [WARN] 删除测试用户失败: {e}")
+
+        # 3. 清理测试动漫（标题含"测试"或"test"）
+        cursor.execute("SELECT id FROM animes WHERE title LIKE %s OR title LIKE %s", ("%测试%", "%test%"))
+        test_anime_ids = [row[0] for row in cursor.fetchall()]
+        if test_anime_ids:
+            print(f"  找到 {len(test_anime_ids)} 个测试动漫: {test_anime_ids}")
+            p = ','.join(['%s'] * len(test_anime_ids))
+            args = tuple(test_anime_ids)
+
+            anime_steps = [
+                (f"DELETE FROM comment_interactions WHERE comment_id IN (SELECT id FROM anime_comments WHERE anime_id IN ({p}))", args, "评论互动(测试动漫)"),
+                (f"DELETE FROM anime_ratings WHERE anime_id IN ({p})", args, "动漫评分(测试动漫)"),
+                (f"DELETE FROM watch_history WHERE anime_id IN ({p})", args, "观看记录(测试动漫)"),
+                (f"DELETE FROM favorites WHERE anime_id IN ({p})", args, "收藏(测试动漫)"),
+                (f"DELETE FROM anime_comments WHERE anime_id IN ({p})", args, "动漫评论(测试动漫)"),
+                (f"DELETE FROM episodes WHERE anime_id IN ({p})", args, "集数(测试动漫)"),
+            ]
+            for sql, params, desc in anime_steps:
+                try:
+                    cursor.execute(sql, params)
+                    if cursor.rowcount > 0:
+                        print(f"    删除 {desc}: {cursor.rowcount} 条")
+                except Exception as e:
+                    print(f"    [WARN] 清理 {desc} 失败: {e}")
+
+            try:
+                cursor.execute(f"DELETE FROM animes WHERE id IN ({p})", args)
+                if cursor.rowcount > 0:
+                    print(f"    删除测试动漫: {cursor.rowcount} 个")
+            except Exception as e:
+                print(f"    [WARN] 删除测试动漫失败: {e}")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("  测试数据清理完成!")
+    except Exception as e:
+        print(f"  [ERROR] 清理测试数据失败: {e}")
+    print("=" * 60)
+
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     """测试结束后打印详细失败摘要"""
     global _terminal

@@ -840,9 +840,9 @@ const goToForumPost = (postId: number) => {
 
 const goToCommentTarget = (comment: any) => {
   if (comment.type === 'forum') {
-    router.push({ path: '/forum', query: { postId: comment.targetId, highlightPost: 'true' } });
+    router.push({ path: '/forum', query: { postId: comment.targetId, commentId: comment.id } });
   } else if (comment.type === 'anime') {
-    router.push(`/anime/${comment.targetId}`);
+    router.push({ path: `/anime/${comment.targetId}/play/1`, query: { commentId: comment.id } });
   }
 };
 
